@@ -1,12 +1,12 @@
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from src.data import CIFAR10DataModule
+from src.data import DataModule
 from src.model import ClassifcationModel
 from src.pl_utils import MyLightningArgumentParser, init_logger
 
 model_class = ClassifcationModel
-dm_class = CIFAR10DataModule
+dm_class = DataModule
 
 # Parse arguments
 parser = MyLightningArgumentParser()
@@ -27,6 +27,7 @@ checkpoint_callback = ModelCheckpoint(
     save_last=True,
 )
 dm = dm_class(**args["data"])
+args["model"]["n_classes"] = dm.n_classes
 model = model_class(**args["model"])
 trainer = pl.Trainer.from_argparse_args(
     args, logger=logger, callbacks=[checkpoint_callback]

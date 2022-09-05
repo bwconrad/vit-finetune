@@ -77,6 +77,12 @@ class ClassifcationModel(pl.LightningModule):
     def shared_step(self, batch, mode="train"):
         x, y = batch
 
+        # from torchvision.utils import save_image
+
+        # print(self.n_classes)
+        # save_image(x[:4], "0.png", normalize=True)
+        # exit()
+
         # Pass through network
         loss, logits = self(x, y)
         pred = logits.argmax(1)

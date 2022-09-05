@@ -1,20 +1,64 @@
+from functools import partial
+
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from torchvision.datasets import CIFAR10
+from torchvision.datasets import (CIFAR10, CIFAR100, PCAM, Flowers102, Food101,
+                                  OxfordIIITPet)
+
+DATASET_DICT = {
+    "cifar10": [
+        partial(CIFAR10, train=True, download=True),
+        partial(CIFAR10, train=False, download=True),
+        partial(CIFAR10, train=False, download=True),
+        10,
+    ],
+    "cifar100": [
+        partial(CIFAR100, train=True, download=True),
+        partial(CIFAR100, train=False, download=True),
+        partial(CIFAR100, train=False, download=True),
+        100,
+    ],
+    "flowers102": [
+        partial(Flowers102, split="train", download=True),
+        partial(Flowers102, split="val", download=True),
+        partial(Flowers102, split="test", download=True),
+        102,
+    ],
+    "food101": [
+        partial(Food101, split="train", download=True),
+        partial(Food101, split="test", download=True),
+        partial(Food101, split="test", download=True),
+        101,
+    ],
+    "pets37": [
+        partial(OxfordIIITPet, split="trainval", download=True),
+        partial(OxfordIIITPet, split="trainval", download=True),
+        partial(OxfordIIITPet, split="test", download=True),
+        37,
+    ],
+    "pcam": [
+        partial(PCAM, split="train", download=True),
+        partial(PCAM, split="val", download=True),
+        partial(PCAM, split="test", download=True),
+        2,
+    ],
+}
 
 
-class CIFAR10DataModule(pl.LightningDataModule):
+class DataModule(pl.LightningDataModule):
     def __init__(
         self,
+        dataset: str = "cifar10",
         root: str = "data/",
         size: int = 224,
         batch_size: int = 32,
         workers: int = 4,
     ):
-        """CIFAR 10 Classification Datamodule
+        """Classification Datamodule
 
         Args:
+            dataset: Name of dataset
             root: Path to data directory
             size: Image size
             batch_size: Number of batch samples
@@ -26,6 +70,19 @@ class CIFAR10DataModule(pl.LightningDataModule):
         self.size = size
         self.batch_size = batch_size
         self.workers = workers
+
+        try:
+            (
+                self.train_dataset_fn,
+                self.val_dataset_fn,
+                self.test_dataset_fn,
+                self.n_classes,
+            ) = DATASET_DICT[dataset]
+            print(f"Using the {dataset} dataset")
+        except:
+            raise ValueError(
+                f"{dataset} is not an available dataset. Should be one of [...]"
+            )
 
         self.transforms_train = transforms.Compose(
             [
@@ -44,21 +101,34 @@ class CIFAR10DataModule(pl.LightningDataModule):
         )
 
     def prepare_data(self):
-        CIFAR10(self.root, train=True, download=True)
-        CIFAR10(self.root, train=False, download=True)
+        self.train_dataset_fn(self.root)
+        self.val_dataset_fn(self.root)
+        self.test_dataset_fn(self.root)
+        # CIFAR10(self.root, train=True, download=True)
+        # CIFAR10(self.root, train=False, download=True)
 
     def setup(self, stage="fit"):
         if stage == "fit":
-            self.train_dataset = CIFAR10(
-                self.root, train=True, transform=self.transforms_train
+            self.train_dataset = self.train_dataset_fn(
+                self.root, transform=self.transforms_train, download=False
             )
-            self.val_dataset = CIFAR10(
-                self.root, train=False, transform=self.transforms_test
+            self.val_dataset = self.val_dataset_fn(
+                self.root, transform=self.transforms_test, download=False
             )
+
+            # self.train_dataset = CIFAR10(
+            #     self.root, train=True, transform=self.transforms_train
+            # )
+            # self.val_dataset = CIFAR10(
+            #     self.root, train=False, transform=self.transforms_test
+            # )
         elif stage == "test":
-            self.test_dataset = CIFAR10(
-                self.root, train=False, transform=self.transforms_test
+            self.test_dataset = self.test_dataset_fn(
+                self.root, transform=self.transforms_test, download=False
             )
+            # self.test_dataset = CIFAR10(
+            #     self.root, train=False, transform=self.transforms_test
+            # )
 
     def train_dataloader(self):
         return DataLoader(
