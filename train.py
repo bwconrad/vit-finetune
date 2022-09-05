@@ -1,12 +1,12 @@
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from src.data import CIFAR10DataModule
+from src.data import CIFAR10DataModule, FFCVDataModule
 from src.model import ClassifcationModel
 from src.pl_utils import MyLightningArgumentParser, init_logger
 
 model_class = ClassifcationModel
-dm_class = CIFAR10DataModule
+dm_class = FFCVDataModule
 
 # Parse arguments
 parser = MyLightningArgumentParser()

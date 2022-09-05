@@ -1,8 +1,7 @@
-einops==0.4.1
+ffcv==0.0.3
 pytorch_lightning[extra]==1.7.0
 torch==1.12.1
-torchmetrics==0.7.3
+torchmetrics==0.9.3
 torchvision==0.13.1
 transformers==4.21.0
-wandb
-ffcv
+wandb==0.12.15

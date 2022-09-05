@@ -91,11 +91,7 @@ class ClassifcationModel(pl.LightningModule):
         return loss
 
     def training_step(self, batch, _):
-        self.log(
-            "lr",
-            self.trainer.optimizers[0].param_groups[0]["lr"],  # type:ignore
-            prog_bar=True,
-        )
+        self.log("lr", self.trainer.optimizers[0].param_groups[0]["lr"], prog_bar=True)
         return self.shared_step(batch, "train")
 
     def validation_step(self, batch, _):
@@ -136,7 +132,7 @@ class ClassifcationModel(pl.LightningModule):
         if self.scheduler == "cosine":
             scheduler = get_cosine_schedule_with_warmup(
                 optimizer,
-                num_training_steps=self.trainer.estimated_stepping_batches,  # type:ignore
+                num_training_steps=int(self.trainer.estimated_stepping_batches),
                 num_warmup_steps=self.warmup_steps,
             )
         elif self.scheduler == "none":
