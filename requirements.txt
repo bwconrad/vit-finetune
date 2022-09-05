@@ -1,4 +1,4 @@
-ffcv==0.0.3
+#ffcv==0.0.3
 pytorch_lightning[extra]==1.7.0
 torch==1.12.1
 torchmetrics==0.9.3
