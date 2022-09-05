@@ -132,7 +132,8 @@ class ClassifcationModel(pl.LightningModule):
         if self.scheduler == "cosine":
             scheduler = get_cosine_schedule_with_warmup(
                 optimizer,
-                num_training_steps=int(self.trainer.estimated_stepping_batches),
+                # num_training_steps=int(self.trainer.estimated_stepping_batches),
+                num_training_steps=int(self.trainer.max_steps),
                 num_warmup_steps=self.warmup_steps,
             )
         elif self.scheduler == "none":
