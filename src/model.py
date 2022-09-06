@@ -14,7 +14,7 @@ model_dict = {
 }
 
 
-class ClassifcationModel(pl.LightningModule):
+class ClassificationModel(pl.LightningModule):
     def __init__(
         self,
         arch: str = "b16",
@@ -62,6 +62,7 @@ class ClassifcationModel(pl.LightningModule):
 
         self.train_acc = Accuracy()
         self.val_acc = Accuracy()
+        self.test_acc = Accuracy()
 
         # Change to channel last memory format
         # https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html

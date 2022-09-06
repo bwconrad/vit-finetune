@@ -66,6 +66,7 @@ class DataModule(pl.LightningDataModule):
         """
         super().__init__()
         self.save_hyperparameters()
+        self.dataset = dataset
         self.root = root
         self.size = size
         self.batch_size = batch_size
@@ -77,8 +78,8 @@ class DataModule(pl.LightningDataModule):
                 self.val_dataset_fn,
                 self.test_dataset_fn,
                 self.n_classes,
-            ) = DATASET_DICT[dataset]
-            print(f"Using the {dataset} dataset")
+            ) = DATASET_DICT[self.dataset]
+            print(f"Using the {self.dataset} dataset")
         except:
             raise ValueError(
                 f"{dataset} is not an available dataset. Should be one of [...]"
@@ -104,8 +105,6 @@ class DataModule(pl.LightningDataModule):
         self.train_dataset_fn(self.root)
         self.val_dataset_fn(self.root)
         self.test_dataset_fn(self.root)
-        # CIFAR10(self.root, train=True, download=True)
-        # CIFAR10(self.root, train=False, download=True)
 
     def setup(self, stage="fit"):
         if stage == "fit":
@@ -115,20 +114,10 @@ class DataModule(pl.LightningDataModule):
             self.val_dataset = self.val_dataset_fn(
                 self.root, transform=self.transforms_test, download=False
             )
-
-            # self.train_dataset = CIFAR10(
-            #     self.root, train=True, transform=self.transforms_train
-            # )
-            # self.val_dataset = CIFAR10(
-            #     self.root, train=False, transform=self.transforms_test
-            # )
         elif stage == "test":
             self.test_dataset = self.test_dataset_fn(
                 self.root, transform=self.transforms_test, download=False
             )
-            # self.test_dataset = CIFAR10(
-            #     self.root, train=False, transform=self.transforms_test
-            # )
 
     def train_dataloader(self):
         return DataLoader(

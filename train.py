@@ -2,10 +2,10 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.data import DataModule
-from src.model import ClassifcationModel
+from src.model import ClassificationModel
 from src.pl_utils import MyLightningArgumentParser, init_logger
 
-model_class = ClassifcationModel
+model_class = ClassificationModel
 dm_class = DataModule
 
 # Parse arguments
