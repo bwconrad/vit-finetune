@@ -33,7 +33,7 @@ DATASET_DICT = {
     ],
     "pets37": [
         partial(OxfordIIITPet, split="trainval", download=True),
-        partial(OxfordIIITPet, split="trainval", download=True),
+        partial(OxfordIIITPet, split="test", download=True),
         partial(OxfordIIITPet, split="test", download=True),
         37,
     ],
