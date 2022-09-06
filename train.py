@@ -27,10 +27,10 @@ checkpoint_callback = ModelCheckpoint(
     save_last=True,
 )
 dm = dm_class(**args["data"])
-args["model"]["n_classes"] = dm.n_classes
+args["model"]["n_classes"] = dm.n_classes  # Get the num of classes for the dataset
 model = model_class(**args["model"])
 trainer = pl.Trainer.from_argparse_args(
-    args, logger=logger, callbacks=[checkpoint_callback]
+    args, logger=logger, callbacks=[checkpoint_callback], check_val_every_n_epoch=None
 )
 
 # Train
