@@ -1,0 +1,20 @@
+name: pets37
+accelerator: gpu
+devices: 1
+precision: 16
+max_steps: 2000
+val_check_interval: 100
+data:
+  dataset: pets37
+  root: data/
+  size: 224
+  batch_size: 128
+  workers: 6
+model:
+  arch: b16
+  optimizer: sgd
+  lr: 0.01
+  momentum: 0.9
+  weight_decay: 0.0
+  scheduler: cosine
+  warmup_steps: 200
