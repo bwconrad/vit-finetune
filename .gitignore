@@ -1,6 +1,6 @@
 data/
 output/
-p.py
+things/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

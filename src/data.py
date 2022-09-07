@@ -1,10 +1,15 @@
+import os
+import shutil
 from functools import partial
+from typing import Callable, Optional
 
+import pandas as pd
 import pytorch_lightning as pl
+import torch.utils.data as data
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from torchvision.datasets import (CIFAR10, CIFAR100, PCAM, Flowers102, Food101,
-                                  OxfordIIITPet)
+from torchvision.datasets import (CIFAR10, CIFAR100, STL10, Flowers102,
+                                  Food101, OxfordIIITPet)
 
 DATASET_DICT = {
     "cifar10": [
@@ -37,11 +42,11 @@ DATASET_DICT = {
         partial(OxfordIIITPet, split="test", download=True),
         37,
     ],
-    "pcam": [
-        partial(PCAM, split="train", download=True),
-        partial(PCAM, split="val", download=True),
-        partial(PCAM, split="test", download=True),
-        2,
+    "stl10": [
+        partial(STL10, split="train", download=True),
+        partial(STL10, split="test", download=True),
+        partial(STL10, split="test", download=True),
+        10,
     ],
 }
 
@@ -54,6 +59,8 @@ class DataModule(pl.LightningDataModule):
         size: int = 224,
         batch_size: int = 32,
         workers: int = 4,
+        randaug_n: int = 0,
+        randaug_m: int = 9,
     ):
         """Classification Datamodule
 
@@ -63,6 +70,8 @@ class DataModule(pl.LightningDataModule):
             size: Image size
             batch_size: Number of batch samples
             workers: Number of data loader workers
+            randaug_n: RandAugment number of augmentations
+            randaug_m: RandAugment magnitude of augmentations
         """
         super().__init__()
         self.save_hyperparameters()
@@ -71,6 +80,8 @@ class DataModule(pl.LightningDataModule):
         self.size = size
         self.batch_size = batch_size
         self.workers = workers
+        self.randaug_n = randaug_n
+        self.randaug_m = randaug_m
 
         try:
             (
@@ -82,13 +93,14 @@ class DataModule(pl.LightningDataModule):
             print(f"Using the {self.dataset} dataset")
         except:
             raise ValueError(
-                f"{dataset} is not an available dataset. Should be one of [...]"
+                f"{dataset} is not an available dataset. Should be one of {[k for k in DATASET_DICT.keys()]}"
             )
 
         self.transforms_train = transforms.Compose(
             [
                 transforms.RandomResizedCrop((self.size, self.size)),
                 transforms.RandomHorizontalFlip(),
+                transforms.RandAugment(self.randaug_n, self.randaug_m),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
             ]
@@ -147,16 +159,68 @@ class DataModule(pl.LightningDataModule):
         )
 
 
-if __name__ == "__main__":
-    dm = CIFAR10DataModule()
-    dm.setup()
-    dl = dm.train_dataloader()
+class DAFRe(data.Dataset):
+    def __init__(
+        self,
+        root: str,
+        split: str = "train",
+        transform: Optional[Callable] = None,
+        download: bool = False,
+    ) -> None:
+        super().__init__()
 
-    for x, y in dl:
-        print(x.size())
-        print(x.min())
-        print(x.max())
-        print(x.dtype)
-        print(y.size())
-        print(y.dtype)
-        break
+        self.split = split
+        self.root = root
+        self.transform = transform
+
+        if download:
+            self.download()
+
+        self.process()
+
+    def download(self) -> None:
+        # if self._check_integrity():
+        #     print("Files already downloaded and verified")
+        #     return
+        # download_and_extract_archive(self.url, self.root, filename=self.filename, md5=self.tgz_md5)
+        return
+
+    def process(self) -> None:
+        # Create directories
+        split_dir = os.path.join(self.root, "dafre", self.split)
+        for i in range(3263):
+            os.makedirs(os.path.join(split_dir, str(i)), exist_ok=True)
+
+        # Load image labels
+        anns = pd.read_csv(
+            os.path.join(
+                self.root,
+                "dafre",
+                "labels",
+                f"{self.split}.csv",
+            ),
+            names=["label", "path"],
+        )
+
+        # Move images to correct directories
+        image_dir = os.path.join(self.root, "dafre", "faces")
+        for label, path in zip(anns.label.to_list(), anns.path.to_list()):
+            shutil.copy(
+                os.path.join(image_dir, path), os.path.join(split_dir, str(label))
+            )
+
+
+if __name__ == "__main__":
+    # dm = DataModule()
+    # dm.setup()
+    # dl = dm.train_dataloader()
+
+    # for x, y in dl:
+    #     print(x.size())
+    #     print(x.min())
+    #     print(x.max())
+    #     print(x.dtype)
+    #     print(y.size())
+    #     print(y.dtype)
+    #     break
+    d = DAFRe("data/", download=True)

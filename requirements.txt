@@ -1,9 +1,7 @@
-#ffcv==0.0.3
-pytorch_lightning[extra]==1.7.0
+pytorch_lightning[extra]==1.7.5
 torch==1.12.1
 torchmetrics==0.9.3
 torchvision==0.13.1
 transformers==4.21.0
 wandb==0.12.15
-h5py==3.7.0
 scipy==1.7.3

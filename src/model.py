@@ -2,12 +2,15 @@ from typing import Tuple
 
 import pytorch_lightning as pl
 import torch
+import torch.nn.functional as F
 from torch.optim import SGD, Adam, AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torchmetrics.classification.accuracy import Accuracy
 from transformers.models.auto.modeling_auto import \
     AutoModelForImageClassification
 from transformers.optimization import get_cosine_schedule_with_warmup
+
+from .mixup import Mixup
 
 model_dict = {
     "b16": "google/vit-base-patch16-224-in21k",
@@ -27,6 +30,10 @@ class ClassificationModel(pl.LightningModule):
         warmup_steps: int = 0,
         n_classes: int = 10,
         channels_last: bool = False,
+        mixup_alpha: float = 0.0,
+        cutmix_alpha: float = 0.0,
+        mix_prob: float = 1.0,
+        label_smoothing: float = 0.0,
     ):
         """Classification Model
 
@@ -41,6 +48,10 @@ class ClassificationModel(pl.LightningModule):
             warmup_steps: Number of warmup epochs
             smoothing: Label smoothing alpha
             channels_last: Change to channels last memory format for possible training speed up
+            mixup_alpha: Mixup alpha value
+            cut_alpha: Cutmix alpha value
+            mix_prob: Probability of applying mixup or cutmix
+            label_smoothing: Amount of label smoothing
         """
         super().__init__()
         self.save_hyperparameters()
@@ -54,15 +65,27 @@ class ClassificationModel(pl.LightningModule):
         self.warmup_steps = warmup_steps
         self.n_classes = n_classes
         self.channels_last = channels_last
+        self.mixup_alpha = mixup_alpha
+        self.cutmix_alpha = cutmix_alpha
+        self.mix_prob = mix_prob
+        self.label_smoothing = label_smoothing
 
         # Initialize network
         self.net = AutoModelForImageClassification.from_pretrained(
-            model_dict[arch], num_labels=n_classes
+            model_dict[arch], num_labels=self.n_classes
         )
 
         self.train_acc = Accuracy()
         self.val_acc = Accuracy()
         self.test_acc = Accuracy()
+
+        self.mixup = Mixup(
+            mixup_alpha=self.mixup_alpha,
+            cutmix_alpha=self.cutmix_alpha,
+            prob=self.mix_prob,
+            label_smoothing=self.label_smoothing,
+            num_classes=self.n_classes,
+        )
 
         # Change to channel last memory format
         # https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html
@@ -70,26 +93,26 @@ class ClassificationModel(pl.LightningModule):
             print("Using channel last memory format")
             self = self.to(memory_format=torch.channels_last)
 
-    def forward(self, x, y):
+    def forward(self, x):
         if self.channels_last:
             x = x.to(memory_format=torch.channels_last)
-        return self.net(pixel_values=x, labels=y)[:2]
+        return self.net(pixel_values=x).logits
 
     def shared_step(self, batch, mode="train"):
         x, y = batch
 
-        # from torchvision.utils import save_image
-
-        # print(self.n_classes)
-        # save_image(x[:4], "0.png", normalize=True)
-        # exit()
+        if mode == "train":
+            x, y = self.mixup(x, y)
+        else:
+            y = F.one_hot(y, num_classes=self.n_classes).float()
 
         # Pass through network
-        loss, logits = self(x, y)
-        pred = logits.argmax(1)
+        logits = self(x)
+        loss = F.binary_cross_entropy_with_logits(logits, y)
 
         # Get accuracy
-        acc = getattr(self, f"{mode}_acc")(pred, y)
+        pred = logits.argmax(1)
+        acc = getattr(self, f"{mode}_acc")(pred, y.argmax(1))
 
         # Log
         self.log(f"{mode}_loss", loss, on_epoch=True)
@@ -139,8 +162,8 @@ class ClassificationModel(pl.LightningModule):
         if self.scheduler == "cosine":
             scheduler = get_cosine_schedule_with_warmup(
                 optimizer,
-                # num_training_steps=int(self.trainer.estimated_stepping_batches),
-                num_training_steps=int(self.trainer.max_steps),
+                num_training_steps=int(self.trainer.estimated_stepping_batches),
+                # num_training_steps=int(self.trainer.max_steps),
                 num_warmup_steps=self.warmup_steps,
             )
         elif self.scheduler == "none":
