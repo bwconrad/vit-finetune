@@ -61,6 +61,7 @@ class DataModule(pl.LightningDataModule):
         workers: int = 4,
         randaug_n: int = 0,
         randaug_m: int = 9,
+        erase_prob: float = 0.0,
     ):
         """Classification Datamodule
 
@@ -72,6 +73,7 @@ class DataModule(pl.LightningDataModule):
             workers: Number of data loader workers
             randaug_n: RandAugment number of augmentations
             randaug_m: RandAugment magnitude of augmentations
+            erase_prob: Probability of applying random erasing
         """
         super().__init__()
         self.save_hyperparameters()
@@ -82,6 +84,7 @@ class DataModule(pl.LightningDataModule):
         self.workers = workers
         self.randaug_n = randaug_n
         self.randaug_m = randaug_m
+        self.erase_prob = erase_prob
 
         try:
             (
@@ -103,6 +106,7 @@ class DataModule(pl.LightningDataModule):
                 transforms.RandAugment(self.randaug_n, self.randaug_m),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+                transforms.RandomErasing(p=self.erase_prob),
             ]
         )
         self.transforms_test = transforms.Compose(
