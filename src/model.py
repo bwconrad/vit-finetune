@@ -10,7 +10,7 @@ from transformers.models.auto.modeling_auto import \
     AutoModelForImageClassification
 from transformers.optimization import get_cosine_schedule_with_warmup
 
-from .mixup import Mixup
+from .utils import Mixup, SoftTargetCrossEntropy
 
 model_dict = {
     "b16": "google/vit-base-patch16-224-in21k",
@@ -75,9 +75,13 @@ class ClassificationModel(pl.LightningModule):
             model_dict[arch], num_labels=self.n_classes
         )
 
+        # Define metrics
         self.train_acc = Accuracy()
         self.val_acc = Accuracy()
         self.test_acc = Accuracy()
+
+        # Define loss
+        self.loss_fn = SoftTargetCrossEntropy()
 
         self.mixup = Mixup(
             mixup_alpha=self.mixup_alpha,
@@ -106,9 +110,15 @@ class ClassificationModel(pl.LightningModule):
         else:
             y = F.one_hot(y, num_classes=self.n_classes).float()
 
+        # if mode == "train":
+        #     from torchvision.utils import save_image
+
+        #     save_image(x[:16], "0.png", normalize=True)
+        #     exit()
+
         # Pass through network
         logits = self(x)
-        loss = F.binary_cross_entropy_with_logits(logits, y)
+        loss = self.loss_fn(logits, y)
 
         # Get accuracy
         pred = logits.argmax(1)
@@ -163,7 +173,6 @@ class ClassificationModel(pl.LightningModule):
             scheduler = get_cosine_schedule_with_warmup(
                 optimizer,
                 num_training_steps=int(self.trainer.estimated_stepping_batches),
-                # num_training_steps=int(self.trainer.max_steps),
                 num_warmup_steps=self.warmup_steps,
             )
         elif self.scheduler == "none":
