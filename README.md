@@ -1,26 +1,8 @@
 # Finetuning Vision Transformers
 Code for fine-tuning ViT models on various classification datasets.
 
-## Requirements
-- Python 3.8+
-- `pip install -r requirements.txt`
 
-## Usage
-### Training
-- For example, to fine-tune on CIFAR-100 run:
-```
-python train.py --accelerator gpu --devices 1 --precision 16 --max_steps 5000 --model.lr 0.01
---model.warmup_steps 500 --val_check_interval 250 --data.batch_size 128 --data.dataset cifar100
-```
-- [`config/`](configs/) contains example configuration files which can be run with:
-```
-python train.py --accelerator gpu --devices 1 --precision 16 --config path/to/config
-```
-- To get a list of all arguments run `python train.py --help`
-
-#### Available Datasets
-<details>
-<summary>Click to expand</summary>
+## Available Datasets
 
 | Dataset            | `--data.dataset` |
 |:------------------:|:-----------:|
@@ -31,10 +13,27 @@ python train.py --accelerator gpu --devices 1 --precision 16 --config path/to/co
 |[Food-101](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/)|  `food101`|
 |[STL-10](https://cs.stanford.edu/~acoates/stl10/)|  `stl10`|
 
-</details>
+
+## Requirements
+- Python 3.8+
+- `pip install -r requirements.txt`
+
+## Usage
+### Training
+- For example, to fine-tune a ViT-B/16 model on CIFAR-100 run:
+```
+python train.py --accelerator gpu --devices 1 --precision 16 --max_steps 5000 --model.lr 0.01
+--model.warmup_steps 500 --val_check_interval 250 --data.batch_size 128 --data.dataset cifar100
+```
+- [`config/`](configs/) contains example configuration files which can be run with:
+```
+python train.py --accelerator gpu --devices 1 --precision 16 --config path/to/config
+```
+- To get a list of all arguments run `python train.py --help`
+
 
 ### Evaluate
-To evaluate a trained model on the test set run:
+To evaluate a trained model on its test set run:
 ```
 python test.py --accelerator gpu --devices 1 --precision 16 --checkpoint path/to/checkpoint/file
 ```

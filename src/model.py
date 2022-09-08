@@ -12,15 +12,29 @@ from transformers.optimization import get_cosine_schedule_with_warmup
 
 from .utils import Mixup, SoftTargetCrossEntropy
 
-model_dict = {
-    "b16": "google/vit-base-patch16-224-in21k",
+MODEL_DICT = {
+    "vit-b16-224-in21k": "google/vit-base-patch16-224-in21k",
+    "vit-b32-224-in21k": "google/vit-base-patch32-224-in21k",
+    "vit-l32-224-in21k": "google/vit-large-patch32-224-in21k",
+    "vit-l15-224-in21k": "google/vit-large-patch16-224-in21k",
+    "vit-h14-224-in21k": "google/vit-huge-patch14-224-in21k",
+    "vit-b16-224": "google/vit-base-patch16-224",
+    "vit-l16-224": "google/vit-large-patch16-224",
+    "vit-b16-384": "google/vit-base-patch16-384",
+    "vit-b32-384": "google/vit-base-patch32-384",
+    "vit-l16-384": "google/vit-large-patch16-384",
+    "vit-l32-384": "google/vit-large-patch32-384",
+    "vit-b16-224-dino": "facebook/dino-vitb16",
+    "vit-b8-224-dino": "facebook/dino-vitb8",
+    "vit-s16-224-dino": "facebook/dino-vits16",
+    "vit-s8-224-dino": "facebook/dino-vits8",
 }
 
 
 class ClassificationModel(pl.LightningModule):
     def __init__(
         self,
-        arch: str = "b16",
+        arch: str = "vit-b16-224-in21k",
         optimizer: str = "sgd",
         lr: float = 3e-2,
         betas: Tuple[float, float] = (0.9, 0.999),
@@ -38,18 +52,18 @@ class ClassificationModel(pl.LightningModule):
         """Classification Model
 
         Args:
-            arch: Name of ViT architecture (b16)
-            optimizer: Name of optimizer (adam | adamw | sgd)
+            arch: Name of ViT architecture [vit-b16-224-in21k]
+            optimizer: Name of optimizer [adam, adamw, sgd]
             lr: Learning rate
             betas: Adam betas parameters
             momentum: SGD momentum parameter
             weight_decay: Optimizer weight decay
-            scheduler: Name of learning rate scheduler (cosine | none)
+            scheduler: Name of learning rate scheduler [cosine, none]
             warmup_steps: Number of warmup epochs
-            smoothing: Label smoothing alpha
+            n_classes: Number of target class. AUTOMATICALLY SET FOR DATASET
             channels_last: Change to channels last memory format for possible training speed up
             mixup_alpha: Mixup alpha value
-            cut_alpha: Cutmix alpha value
+            cutmix_alpha: Cutmix alpha value
             mix_prob: Probability of applying mixup or cutmix
             label_smoothing: Amount of label smoothing
         """
@@ -71,8 +85,15 @@ class ClassificationModel(pl.LightningModule):
         self.label_smoothing = label_smoothing
 
         # Initialize network
+        try:
+            model_path = MODEL_DICT[arch]
+        except:
+            raise ValueError(
+                f"{arch} is not an available dataset. Should be one of {[k for k in MODEL_DICT.keys()]}"
+            )
+
         self.net = AutoModelForImageClassification.from_pretrained(
-            model_dict[arch], num_labels=self.n_classes
+            model_path, num_labels=self.n_classes, ignore_mismatched_sizes=True
         )
 
         # Define metrics
@@ -110,11 +131,11 @@ class ClassificationModel(pl.LightningModule):
         else:
             y = F.one_hot(y, num_classes=self.n_classes).float()
 
-        # if mode == "train":
-        #     from torchvision.utils import save_image
+        if mode == "train":
+            from torchvision.utils import save_image
 
-        #     save_image(x[:16], "0.png", normalize=True)
-        #     exit()
+            save_image(x[:16], "0.png", normalize=True)
+            exit()
 
         # Pass through network
         logits = self(x)
