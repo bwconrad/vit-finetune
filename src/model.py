@@ -48,6 +48,7 @@ class ClassificationModel(pl.LightningModule):
         cutmix_alpha: float = 0.0,
         mix_prob: float = 1.0,
         label_smoothing: float = 0.0,
+        linear_prob: bool = False,
     ):
         """Classification Model
 
@@ -66,6 +67,7 @@ class ClassificationModel(pl.LightningModule):
             cutmix_alpha: Cutmix alpha value
             mix_prob: Probability of applying mixup or cutmix
             label_smoothing: Amount of label smoothing
+            linear_prob: Only train the classifier and keep other layers frozen
         """
         super().__init__()
         self.save_hyperparameters()
@@ -83,6 +85,7 @@ class ClassificationModel(pl.LightningModule):
         self.cutmix_alpha = cutmix_alpha
         self.mix_prob = mix_prob
         self.label_smoothing = label_smoothing
+        self.linear_prob = linear_prob
 
         # Initialize network
         try:
@@ -91,10 +94,15 @@ class ClassificationModel(pl.LightningModule):
             raise ValueError(
                 f"{arch} is not an available dataset. Should be one of {[k for k in MODEL_DICT.keys()]}"
             )
-
         self.net = AutoModelForImageClassification.from_pretrained(
             model_path, num_labels=self.n_classes, ignore_mismatched_sizes=True
         )
+
+        # Freeze transformer layers if linear prob
+        if self.linear_prob:
+            for name, param in self.net.named_parameters():
+                if "classifier" not in name:
+                    param.requires_grad = False
 
         # Define metrics
         self.train_acc = Accuracy()
@@ -131,11 +139,11 @@ class ClassificationModel(pl.LightningModule):
         else:
             y = F.one_hot(y, num_classes=self.n_classes).float()
 
-        if mode == "train":
-            from torchvision.utils import save_image
+        # if mode == "train":
+        #     from torchvision.utils import save_image
 
-            save_image(x[:16], "0.png", normalize=True)
-            exit()
+        #     save_image(x[:16], "0.png", normalize=True)
+        #     exit()
 
         # Pass through network
         logits = self(x)
