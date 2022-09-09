@@ -13,6 +13,7 @@ parser = MyLightningArgumentParser()
 parser.add_lightning_class_args(pl.Trainer, None)  # type:ignore
 parser.add_lightning_class_args(dm_class, "data")
 parser.add_lightning_class_args(model_class, "model")
+parser.link_arguments("data.size", "model.image_size")
 parser.add_argument(
     "--test_at_end", action="store_true", help="Evaluate on test set after training"
 )

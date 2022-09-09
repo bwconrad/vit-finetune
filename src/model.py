@@ -49,6 +49,7 @@ class ClassificationModel(pl.LightningModule):
         mix_prob: float = 1.0,
         label_smoothing: float = 0.0,
         linear_prob: bool = False,
+        image_size: int = 224,
     ):
         """Classification Model
 
@@ -68,6 +69,7 @@ class ClassificationModel(pl.LightningModule):
             mix_prob: Probability of applying mixup or cutmix
             label_smoothing: Amount of label smoothing
             linear_prob: Only train the classifier and keep other layers frozen
+            image_size: Size of input images
         """
         super().__init__()
         self.save_hyperparameters()
@@ -86,6 +88,7 @@ class ClassificationModel(pl.LightningModule):
         self.mix_prob = mix_prob
         self.label_smoothing = label_smoothing
         self.linear_prob = linear_prob
+        self.image_size = image_size
 
         # Initialize network
         try:
@@ -95,7 +98,10 @@ class ClassificationModel(pl.LightningModule):
                 f"{arch} is not an available dataset. Should be one of {[k for k in MODEL_DICT.keys()]}"
             )
         self.net = AutoModelForImageClassification.from_pretrained(
-            model_path, num_labels=self.n_classes, ignore_mismatched_sizes=True
+            model_path,
+            num_labels=self.n_classes,
+            ignore_mismatched_sizes=True,
+            image_size=self.image_size,
         )
 
         # Freeze transformer layers if linear prob
