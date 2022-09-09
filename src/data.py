@@ -8,8 +8,9 @@ import pytorch_lightning as pl
 import torch.utils.data as data
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from torchvision.datasets import (CIFAR10, CIFAR100, STL10, Flowers102,
-                                  Food101, OxfordIIITPet)
+from torchvision.datasets import (CIFAR10, CIFAR100, DTD, STL10, FGVCAircraft,
+                                  Flowers102, Food101, OxfordIIITPet,
+                                  StanfordCars)
 
 DATASET_DICT = {
     "cifar10": [
@@ -47,6 +48,24 @@ DATASET_DICT = {
         partial(STL10, split="test", download=True),
         partial(STL10, split="test", download=True),
         10,
+    ],
+    "dtd": [
+        partial(DTD, split="train", download=True),
+        partial(DTD, split="val", download=True),
+        partial(DTD, split="test", download=True),
+        47,
+    ],
+    "aircraft": [
+        partial(FGVCAircraft, split="train", download=True),
+        partial(FGVCAircraft, split="val", download=True),
+        partial(FGVCAircraft, split="test", download=True),
+        100,
+    ],
+    "cars": [
+        partial(StanfordCars, split="train", download=True),
+        partial(StanfordCars, split="test", download=True),
+        partial(StanfordCars, split="test", download=True),
+        196,
     ],
 }
 

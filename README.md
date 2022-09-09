@@ -12,6 +12,9 @@ Code for fine-tuning ViT models on various classification datasets.
 |[Oxford Flowers-102](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/)|  `flowers102`|
 |[Food-101](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/)|  `food101`|
 |[STL-10](https://cs.stanford.edu/~acoates/stl10/)|  `stl10`|
+|[Describable Textures Dataset](https://www.robots.ox.ac.uk/~vgg/data/dtd/) | `dtd`|
+|[Stanford Cars](https://ai.stanford.edu/~jkrause/cars/car_dataset.html) | `cars`|
+|[FGVC Aircraft](https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/) | `aircraft`|
 
 
 ## Requirements
@@ -20,7 +23,7 @@ Code for fine-tuning ViT models on various classification datasets.
 
 ## Usage
 ### Training
-- For example, to fine-tune a ViT-B/16 model on CIFAR-100 run:
+- To fine-tune a ViT-B/16 model on CIFAR-100 run:
 ```
 python train.py --accelerator gpu --devices 1 --precision 16 --max_steps 5000 --model.lr 0.01
 --model.warmup_steps 500 --val_check_interval 250 --data.batch_size 128 --data.dataset cifar100
@@ -35,7 +38,7 @@ python train.py --accelerator gpu --devices 1 --precision 16 --config path/to/co
 ### Evaluate
 To evaluate a trained model on its test set run:
 ```
-python test.py --accelerator gpu --devices 1 --precision 16 --checkpoint path/to/checkpoint/file
+python test.py --accelerator gpu --devices 1 --precision 16 --checkpoint path/to/checkpoint
 ```
 - __Note__: Make sure the `--precision` argument is set to the same level as used during training.
 
