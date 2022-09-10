@@ -187,6 +187,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=True,
             num_workers=self.workers,
             pin_memory=True,
+            drop_last=True,
         )
 
     def val_dataloader(self):
