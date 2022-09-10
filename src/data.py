@@ -79,6 +79,7 @@ class DataModule(pl.LightningDataModule):
         randaug_n: int = 0,
         randaug_m: int = 9,
         erase_prob: float = 0.0,
+        min_scale: float = 0.08,
     ):
         """Classification Datamodule
 
@@ -92,6 +93,7 @@ class DataModule(pl.LightningDataModule):
             randaug_n: RandAugment number of augmentations
             randaug_m: RandAugment magnitude of augmentations
             erase_prob: Probability of applying random erasing
+            min_scale: Min crop scale
         """
         super().__init__()
         self.save_hyperparameters()
@@ -103,6 +105,7 @@ class DataModule(pl.LightningDataModule):
         self.randaug_n = randaug_n
         self.randaug_m = randaug_m
         self.erase_prob = erase_prob
+        self.min_scale = min_scale
 
         # Define dataset
         if self.dataset == "custom":
@@ -136,7 +139,9 @@ class DataModule(pl.LightningDataModule):
 
         self.transforms_train = transforms.Compose(
             [
-                transforms.RandomResizedCrop((self.size, self.size)),
+                transforms.RandomResizedCrop(
+                    (self.size, self.size), scale=(self.min_scale, 1)
+                ),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandAugment(self.randaug_n, self.randaug_m),
                 transforms.ToTensor(),
