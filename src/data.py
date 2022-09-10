@@ -1,16 +1,13 @@
 import os
-import shutil
 from functools import partial
-from typing import Callable, Optional
+from typing import Optional
 
-import pandas as pd
 import pytorch_lightning as pl
-import torch.utils.data as data
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import (CIFAR10, CIFAR100, DTD, STL10, FGVCAircraft,
-                                  Flowers102, Food101, OxfordIIITPet,
-                                  StanfordCars)
+                                  Flowers102, Food101, ImageFolder,
+                                  OxfordIIITPet, StanfordCars)
 
 DATASET_DICT = {
     "cifar10": [
@@ -75,6 +72,7 @@ class DataModule(pl.LightningDataModule):
         self,
         dataset: str = "cifar10",
         root: str = "data/",
+        n_classes: Optional[int] = None,
         size: int = 224,
         batch_size: int = 32,
         workers: int = 4,
@@ -86,7 +84,8 @@ class DataModule(pl.LightningDataModule):
 
         Args:
             dataset: Name of dataset
-            root: Path to data directory
+            root: Download path for built-in datasets or path to dataset directory for custom datasets
+            n_classes: Number of classes when using a custom dataset
             size: Image size
             batch_size: Number of batch samples
             workers: Number of data loader workers
@@ -105,18 +104,35 @@ class DataModule(pl.LightningDataModule):
         self.randaug_m = randaug_m
         self.erase_prob = erase_prob
 
-        try:
-            (
-                self.train_dataset_fn,
-                self.val_dataset_fn,
-                self.test_dataset_fn,
-                self.n_classes,
-            ) = DATASET_DICT[self.dataset]
-            print(f"Using the {self.dataset} dataset")
-        except:
-            raise ValueError(
-                f"{dataset} is not an available dataset. Should be one of {[k for k in DATASET_DICT.keys()]}"
+        # Define dataset
+        if self.dataset == "custom":
+            assert n_classes is not None
+
+            # Custom dataset
+            self.train_dataset_fn = partial(
+                ImageFolder, root=os.path.join(self.root, "train")
             )
+            self.val_dataset_fn = partial(
+                ImageFolder, root=os.path.join(self.root, "val")
+            )
+            self.test_dataset_fn = partial(
+                ImageFolder, root=os.path.join(self.root, "test")
+            )
+            self.n_classes = n_classes
+        else:
+            # Built-in dataset
+            try:
+                (
+                    self.train_dataset_fn,
+                    self.val_dataset_fn,
+                    self.test_dataset_fn,
+                    self.n_classes,
+                ) = DATASET_DICT[self.dataset]
+                print(f"Using the {self.dataset} dataset")
+            except:
+                raise ValueError(
+                    f"{dataset} is not an available dataset. Should be one of {[k for k in DATASET_DICT.keys()]}"
+                )
 
         self.transforms_train = transforms.Compose(
             [
@@ -137,22 +153,32 @@ class DataModule(pl.LightningDataModule):
         )
 
     def prepare_data(self):
-        self.train_dataset_fn(self.root)
-        self.val_dataset_fn(self.root)
-        self.test_dataset_fn(self.root)
+        if self.dataset != "custom":
+            self.train_dataset_fn(self.root)
+            self.val_dataset_fn(self.root)
+            self.test_dataset_fn(self.root)
 
     def setup(self, stage="fit"):
-        if stage == "fit":
-            self.train_dataset = self.train_dataset_fn(
-                self.root, transform=self.transforms_train, download=False
-            )
-            self.val_dataset = self.val_dataset_fn(
-                self.root, transform=self.transforms_test, download=False
-            )
-        elif stage == "test":
-            self.test_dataset = self.test_dataset_fn(
-                self.root, transform=self.transforms_test, download=False
-            )
+        if self.dataset == "custom":
+            if stage == "fit":
+                self.train_dataset = self.train_dataset_fn(
+                    transform=self.transforms_train
+                )
+                self.val_dataset = self.val_dataset_fn(transform=self.transforms_test)
+            elif stage == "test":
+                self.test_dataset = self.test_dataset_fn(transform=self.transforms_test)
+        else:
+            if stage == "fit":
+                self.train_dataset = self.train_dataset_fn(
+                    self.root, transform=self.transforms_train, download=False
+                )
+                self.val_dataset = self.val_dataset_fn(
+                    self.root, transform=self.transforms_test, download=False
+                )
+            elif stage == "test":
+                self.test_dataset = self.test_dataset_fn(
+                    self.root, transform=self.transforms_test, download=False
+                )
 
     def train_dataloader(self):
         return DataLoader(
@@ -182,68 +208,18 @@ class DataModule(pl.LightningDataModule):
         )
 
 
-class DAFRe(data.Dataset):
-    def __init__(
-        self,
-        root: str,
-        split: str = "train",
-        transform: Optional[Callable] = None,
-        download: bool = False,
-    ) -> None:
-        super().__init__()
-
-        self.split = split
-        self.root = root
-        self.transform = transform
-
-        if download:
-            self.download()
-
-        self.process()
-
-    def download(self) -> None:
-        # if self._check_integrity():
-        #     print("Files already downloaded and verified")
-        #     return
-        # download_and_extract_archive(self.url, self.root, filename=self.filename, md5=self.tgz_md5)
-        return
-
-    def process(self) -> None:
-        # Create directories
-        split_dir = os.path.join(self.root, "dafre", self.split)
-        for i in range(3263):
-            os.makedirs(os.path.join(split_dir, str(i)), exist_ok=True)
-
-        # Load image labels
-        anns = pd.read_csv(
-            os.path.join(
-                self.root,
-                "dafre",
-                "labels",
-                f"{self.split}.csv",
-            ),
-            names=["label", "path"],
-        )
-
-        # Move images to correct directories
-        image_dir = os.path.join(self.root, "dafre", "faces")
-        for label, path in zip(anns.label.to_list(), anns.path.to_list()):
-            shutil.copy(
-                os.path.join(image_dir, path), os.path.join(split_dir, str(label))
-            )
-
-
 if __name__ == "__main__":
-    # dm = DataModule()
-    # dm.setup()
-    # dl = dm.train_dataloader()
+    dm = DataModule(dataset="custom", root="data/dafre")
+    dm.setup()
+    dl = dm.train_dataloader()
+    print(len(dm.train_dataset))
+    print(len(dm.val_dataset))
 
-    # for x, y in dl:
-    #     print(x.size())
-    #     print(x.min())
-    #     print(x.max())
-    #     print(x.dtype)
-    #     print(y.size())
-    #     print(y.dtype)
-    #     break
-    d = DAFRe("data/", download=True)
+    for x, y in dl:
+        print(x.size())
+        print(x.min())
+        print(x.max())
+        print(x.dtype)
+        print(y.size())
+        print(y.dtype)
+        break
