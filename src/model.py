@@ -28,6 +28,7 @@ MODEL_DICT = {
     "vit-b8-224-dino": "facebook/dino-vitb8",
     "vit-s16-224-dino": "facebook/dino-vits16",
     "vit-s8-224-dino": "facebook/dino-vits8",
+    "beit-b16-224": "microsoft/beit-base-patch16-224-pt22k",
 }
 
 
