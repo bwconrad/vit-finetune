@@ -133,13 +133,13 @@ class ClassificationModel(pl.LightningModule):
 
         # Define metrics
         self.train_metrics = MetricCollection(
-            {"acc_top1": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
+            {"acc": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
         )
         self.val_metrics = MetricCollection(
-            {"acc_top1": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
+            {"acc": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
         )
         self.test_metrics = MetricCollection(
-            {"acc_top1": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
+            {"acc": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
         )
 
         # Define loss
