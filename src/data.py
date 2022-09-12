@@ -77,9 +77,10 @@ class DataModule(pl.LightningDataModule):
         min_scale: float = 0.08,
         batch_size: int = 32,
         workers: int = 4,
-        randaug_n: int = 0,
-        randaug_m: int = 9,
+        rand_aug_n: int = 0,
+        rand_aug_m: int = 9,
         erase_prob: float = 0.0,
+        use_trivial_aug: bool = False,
     ):
         """Classification Datamodule
 
@@ -92,9 +93,10 @@ class DataModule(pl.LightningDataModule):
             min_scale: Min crop scale
             batch_size: Number of batch samples
             workers: Number of data loader workers
-            randaug_n: RandAugment number of augmentations
-            randaug_m: RandAugment magnitude of augmentations
+            rand_aug_n: RandAugment number of augmentations
+            rand_aug_m: RandAugment magnitude of augmentations
             erase_prob: Probability of applying random erasing
+            use_trivial_aug: Apply TrivialAugment instead of RandAugment
         """
         super().__init__()
         self.save_hyperparameters()
@@ -104,9 +106,10 @@ class DataModule(pl.LightningDataModule):
         self.min_scale = min_scale
         self.batch_size = batch_size
         self.workers = workers
-        self.randaug_n = randaug_n
-        self.randaug_m = randaug_m
+        self.rand_aug_n = rand_aug_n
+        self.rand_aug_m = rand_aug_m
         self.erase_prob = erase_prob
+        self.use_trivial_aug = use_trivial_aug
 
         # Define dataset
         if self.dataset == "custom":
@@ -144,7 +147,9 @@ class DataModule(pl.LightningDataModule):
                     (self.size, self.size), scale=(self.min_scale, 1)
                 ),
                 transforms.RandomHorizontalFlip(),
-                transforms.RandAugment(self.randaug_n, self.randaug_m),
+                transforms.TrivialAugmentWide()
+                if self.use_trivial_aug
+                else transforms.RandAugment(self.rand_aug_n, self.rand_aug_m),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
                 transforms.RandomErasing(p=self.erase_prob),
