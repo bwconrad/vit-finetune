@@ -12,7 +12,6 @@ Hacked together by / Copyright 2019, Ross Wightman
 """
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 
 def one_hot(x, num_classes, on_value=1.0, off_value=0.0, device="cuda"):
@@ -282,16 +281,3 @@ class Mixup:
             target, self.num_classes, lam, self.label_smoothing, x.device
         )
         return x, target
-
-
-class SoftTargetCrossEntropy(torch.nn.Module):
-    """Cross Entropy w/ smoothing or soft targets
-    From: https://github.com/rwightman/pytorch-image-models/blob/master/timm/loss/cross_entropy.py
-    """
-
-    def __init__(self):
-        super(SoftTargetCrossEntropy, self).__init__()
-
-    def forward(self, x: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        loss = torch.sum(-target * F.log_softmax(x, dim=-1), dim=-1)
-        return loss.mean()

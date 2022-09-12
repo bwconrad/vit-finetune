@@ -74,44 +74,46 @@ class DataModule(pl.LightningDataModule):
         root: str = "data/",
         n_classes: Optional[int] = None,
         size: int = 224,
+        min_scale: float = 0.08,
         batch_size: int = 32,
         workers: int = 4,
         randaug_n: int = 0,
         randaug_m: int = 9,
         erase_prob: float = 0.0,
-        min_scale: float = 0.08,
     ):
         """Classification Datamodule
 
         Args:
-            dataset: Name of dataset
+            dataset: Name of dataset [custom, cifar10, cifar100, flowers102
+                     food101, pets37, stl10, dtd, aircraft, cars]
             root: Download path for built-in datasets or path to dataset directory for custom datasets
             n_classes: Number of classes when using a custom dataset
             size: Image size
+            min_scale: Min crop scale
             batch_size: Number of batch samples
             workers: Number of data loader workers
             randaug_n: RandAugment number of augmentations
             randaug_m: RandAugment magnitude of augmentations
             erase_prob: Probability of applying random erasing
-            min_scale: Min crop scale
         """
         super().__init__()
         self.save_hyperparameters()
         self.dataset = dataset
         self.root = root
         self.size = size
+        self.min_scale = min_scale
         self.batch_size = batch_size
         self.workers = workers
         self.randaug_n = randaug_n
         self.randaug_m = randaug_m
         self.erase_prob = erase_prob
-        self.min_scale = min_scale
 
         # Define dataset
         if self.dataset == "custom":
-            assert n_classes is not None
-
             # Custom dataset
+            assert n_classes is not None
+            self.n_classes = n_classes
+
             self.train_dataset_fn = partial(
                 ImageFolder, root=os.path.join(self.root, "train")
             )
@@ -121,7 +123,6 @@ class DataModule(pl.LightningDataModule):
             self.test_dataset_fn = partial(
                 ImageFolder, root=os.path.join(self.root, "test")
             )
-            self.n_classes = n_classes
         else:
             # Built-in dataset
             try:
@@ -215,7 +216,7 @@ class DataModule(pl.LightningDataModule):
 
 
 if __name__ == "__main__":
-    dm = DataModule(dataset="custom", root="data/dafre")
+    dm = DataModule(dataset="custom", root="data/dafre", n_classes=3263)
     dm.setup()
     dl = dm.train_dataloader()
     print(len(dm.train_dataset))

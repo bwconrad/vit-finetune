@@ -10,7 +10,8 @@ from transformers.models.auto.modeling_auto import \
     AutoModelForImageClassification
 from transformers.optimization import get_cosine_schedule_with_warmup
 
-from .utils import Mixup, SoftTargetCrossEntropy
+from .loss import SoftTargetCrossEntropy
+from .mixup import Mixup
 
 MODEL_DICT = {
     "vit-b16-224-in21k": "google/vit-base-patch16-224-in21k",
@@ -28,14 +29,14 @@ MODEL_DICT = {
     "vit-b8-224-dino": "facebook/dino-vitb8",
     "vit-s16-224-dino": "facebook/dino-vits16",
     "vit-s8-224-dino": "facebook/dino-vits8",
-    "beit-b16-224": "microsoft/beit-base-patch16-224-pt22k",
+    "beit-b16-224-in21k": "microsoft/beit-base-patch16-224-pt22k-ft22k",
 }
 
 
 class ClassificationModel(pl.LightningModule):
     def __init__(
         self,
-        arch: str = "vit-b16-224-in21k",
+        model_name: str = "vit-b16-224-in21k",
         optimizer: str = "sgd",
         lr: float = 3e-2,
         betas: Tuple[float, float] = (0.9, 0.999),
@@ -55,7 +56,7 @@ class ClassificationModel(pl.LightningModule):
         """Classification Model
 
         Args:
-            arch: Name of ViT architecture [vit-b16-224-in21k]
+            model_name: Name of model checkpoint [vit-b16-224-in21k]
             optimizer: Name of optimizer [adam, adamw, sgd]
             lr: Learning rate
             betas: Adam betas parameters
@@ -74,7 +75,7 @@ class ClassificationModel(pl.LightningModule):
         """
         super().__init__()
         self.save_hyperparameters()
-        self.arch = arch
+        self.model_name = model_name
         self.optimizer = optimizer
         self.lr = lr
         self.betas = betas
@@ -93,10 +94,10 @@ class ClassificationModel(pl.LightningModule):
 
         # Initialize network
         try:
-            model_path = MODEL_DICT[arch]
+            model_path = MODEL_DICT[model_name]
         except:
             raise ValueError(
-                f"{arch} is not an available dataset. Should be one of {[k for k in MODEL_DICT.keys()]}"
+                f"{model_name} is not an available dataset. Should be one of {[k for k in MODEL_DICT.keys()]}"
             )
         self.net = AutoModelForImageClassification.from_pretrained(
             model_path,
