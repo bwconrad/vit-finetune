@@ -23,7 +23,7 @@ args = parser.parse_args()
 logger = init_logger(args)
 checkpoint_callback = ModelCheckpoint(
     filename="best-{epoch}-{val_acc:.4f}",
-    monitor="val_acc_top1",
+    monitor="val_acc",
     mode="max",
     save_last=True,
 )
