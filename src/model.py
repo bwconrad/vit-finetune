@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.optim import SGD, Adam, AdamW
 from torch.optim.lr_scheduler import LambdaLR
+from torchmetrics import MetricCollection
 from torchmetrics.classification.accuracy import Accuracy
 from transformers.models.auto.modeling_auto import \
     AutoModelForImageClassification
@@ -113,12 +114,15 @@ class ClassificationModel(pl.LightningModule):
                     param.requires_grad = False
 
         # Define metrics
-        self.train_acc = Accuracy()
-        self.val_acc = Accuracy()
-        self.test_acc = Accuracy()
-        self.train_acc5 = Accuracy(top_k=5)
-        self.val_acc5 = Accuracy(top_k=5)
-        self.test_acc5 = Accuracy(top_k=5)
+        self.train_metrics = MetricCollection(
+            {"acc_top1": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
+        )
+        self.val_metrics = MetricCollection(
+            {"acc_top1": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
+        )
+        self.test_metrics = MetricCollection(
+            {"acc_top1": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
+        )
 
         # Define loss
         self.loss_fn = SoftTargetCrossEntropy()
@@ -161,13 +165,12 @@ class ClassificationModel(pl.LightningModule):
         loss = self.loss_fn(pred, y)
 
         # Get accuracy
-        acc = getattr(self, f"{mode}_acc")(pred, y.argmax(1))
-        acc5 = getattr(self, f"{mode}_acc5")(pred, y.argmax(1))
+        metrics = getattr(self, f"{mode}_metrics")(pred, y.argmax(1))
 
         # Log
         self.log(f"{mode}_loss", loss, on_epoch=True)
-        self.log(f"{mode}_acc", acc, on_epoch=True)
-        self.log(f"{mode}_acc5", acc5, on_epoch=True)
+        for k, v in metrics.items():
+            self.log(f"{mode}_{k.lower()}", v, on_epoch=True)
 
         return loss
 
