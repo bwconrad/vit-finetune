@@ -116,6 +116,9 @@ class ClassificationModel(pl.LightningModule):
         self.train_acc = Accuracy()
         self.val_acc = Accuracy()
         self.test_acc = Accuracy()
+        self.train_acc5 = Accuracy(top_k=5)
+        self.val_acc5 = Accuracy(top_k=5)
+        self.test_acc5 = Accuracy(top_k=5)
 
         # Define loss
         self.loss_fn = SoftTargetCrossEntropy()
@@ -154,16 +157,17 @@ class ClassificationModel(pl.LightningModule):
         #     exit()
 
         # Pass through network
-        logits = self(x)
-        loss = self.loss_fn(logits, y)
+        pred = self(x)
+        loss = self.loss_fn(pred, y)
 
         # Get accuracy
-        pred = logits.argmax(1)
         acc = getattr(self, f"{mode}_acc")(pred, y.argmax(1))
+        acc5 = getattr(self, f"{mode}_acc5")(pred, y.argmax(1))
 
         # Log
         self.log(f"{mode}_loss", loss, on_epoch=True)
         self.log(f"{mode}_acc", acc, on_epoch=True)
+        self.log(f"{mode}_acc5", acc5, on_epoch=True)
 
         return loss
 
