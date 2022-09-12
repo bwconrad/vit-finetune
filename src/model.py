@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
@@ -51,8 +51,9 @@ class ClassificationModel(pl.LightningModule):
         cutmix_alpha: float = 0.0,
         mix_prob: float = 1.0,
         label_smoothing: float = 0.0,
-        linear_prob: bool = False,
+        linear_probe: bool = False,
         image_size: int = 224,
+        weights: Optional[str] = None,
     ):
         """Classification Model
 
@@ -65,14 +66,15 @@ class ClassificationModel(pl.LightningModule):
             weight_decay: Optimizer weight decay
             scheduler: Name of learning rate scheduler [cosine, none]
             warmup_steps: Number of warmup epochs
-            n_classes: Number of target class. AUTOMATICALLY SET FOR DATASET
+            n_classes: Number of target class. AUTOMATICALLY SET BY DATAMODULE
             channels_last: Change to channels last memory format for possible training speed up
             mixup_alpha: Mixup alpha value
             cutmix_alpha: Cutmix alpha value
             mix_prob: Probability of applying mixup or cutmix
             label_smoothing: Amount of label smoothing
-            linear_prob: Only train the classifier and keep other layers frozen
+            linear_probe: Only train the classifier and keep other layers frozen
             image_size: Size of input images
+            weights: Path of checkpoint to load weights from. E.g when resuming after linear probing
         """
         super().__init__()
         self.save_hyperparameters()
@@ -90,8 +92,9 @@ class ClassificationModel(pl.LightningModule):
         self.cutmix_alpha = cutmix_alpha
         self.mix_prob = mix_prob
         self.label_smoothing = label_smoothing
-        self.linear_prob = linear_prob
+        self.linear_probe = linear_probe
         self.image_size = image_size
+        self.weights = weights
 
         # Initialize network
         try:
@@ -107,8 +110,23 @@ class ClassificationModel(pl.LightningModule):
             image_size=self.image_size,
         )
 
-        # Freeze transformer layers if linear prob
-        if self.linear_prob:
+        # Load checkpoint weights
+        if self.weights:
+            print(f"Loaded weights from {self.weights}")
+            ckpt = torch.load(self.weights)["state_dict"]
+
+            # Remove prefix from key names
+            new_state_dict = {}
+            for k, v in ckpt.items():
+                if k.startswith("net"):
+                    k = k.replace("net" + ".", "")
+                    new_state_dict[k] = v
+
+            # Load weights
+            self.net.load_state_dict(new_state_dict, strict=True)
+
+        # Freeze transformer layers if linear probing
+        if self.linear_probe:
             for name, param in self.net.named_parameters():
                 if "classifier" not in name:
                     param.requires_grad = False
@@ -127,6 +145,7 @@ class ClassificationModel(pl.LightningModule):
         # Define loss
         self.loss_fn = SoftTargetCrossEntropy()
 
+        # Define regularizers
         self.mixup = Mixup(
             mixup_alpha=self.mixup_alpha,
             cutmix_alpha=self.cutmix_alpha,
