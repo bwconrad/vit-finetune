@@ -1,6 +1,7 @@
 from typing import Optional, Tuple
 
 import pytorch_lightning as pl
+import timm
 import torch
 import torch.nn.functional as F
 from torch.optim import SGD, Adam, AdamW
@@ -15,29 +16,31 @@ from .loss import SoftTargetCrossEntropy
 from .mixup import Mixup
 
 MODEL_DICT = {
-    "vit-b16-224-in21k": "google/vit-base-patch16-224-in21k",
-    "vit-b32-224-in21k": "google/vit-base-patch32-224-in21k",
-    "vit-l32-224-in21k": "google/vit-large-patch32-224-in21k",
-    "vit-l15-224-in21k": "google/vit-large-patch16-224-in21k",
-    "vit-h14-224-in21k": "google/vit-huge-patch14-224-in21k",
-    "vit-b16-224": "google/vit-base-patch16-224",
-    "vit-l16-224": "google/vit-large-patch16-224",
-    "vit-b16-384": "google/vit-base-patch16-384",
-    "vit-b32-384": "google/vit-base-patch32-384",
-    "vit-l16-384": "google/vit-large-patch16-384",
-    "vit-l32-384": "google/vit-large-patch32-384",
-    "vit-b16-224-dino": "facebook/dino-vitb16",
-    "vit-b8-224-dino": "facebook/dino-vitb8",
-    "vit-s16-224-dino": "facebook/dino-vits16",
-    "vit-s8-224-dino": "facebook/dino-vits8",
-    "beit-b16-224-in21k": "microsoft/beit-base-patch16-224-pt22k-ft22k",
+    "hf-vit-b16-224-in21k": "google/vit-base-patch16-224-in21k",
+    "hf-vit-b32-224-in21k": "google/vit-base-patch32-224-in21k",
+    "hf-vit-l32-224-in21k": "google/vit-large-patch32-224-in21k",
+    "hf-vit-l15-224-in21k": "google/vit-large-patch16-224-in21k",
+    "hf-vit-h14-224-in21k": "google/vit-huge-patch14-224-in21k",
+    "hf-vit-b16-224": "google/vit-base-patch16-224",
+    "hf-vit-l16-224": "google/vit-large-patch16-224",
+    "hf-vit-b16-384": "google/vit-base-patch16-384",
+    "hf-vit-b32-384": "google/vit-base-patch32-384",
+    "hf-vit-l16-384": "google/vit-large-patch16-384",
+    "hf-vit-l32-384": "google/vit-large-patch32-384",
+    "hf-vit-b16-224-dino": "facebook/dino-vitb16",
+    "hf-vit-b8-224-dino": "facebook/dino-vitb8",
+    "hf-vit-s16-224-dino": "facebook/dino-vits16",
+    "hf-vit-s8-224-dino": "facebook/dino-vits8",
+    "hf-beit-b16-224-in21k": "microsoft/beit-base-patch16-224-pt22k-ft22k",
+    "hf-beit-l16-224-in21k": "microsoft/beit-large-patch16-224-pt22k-ft22k",
+    "timm-beitv2-b16-224-in21k": "beitv2_base_patch16_224_in22k",
 }
 
 
 class ClassificationModel(pl.LightningModule):
     def __init__(
         self,
-        model_name: str = "vit-b16-224-in21k",
+        model_name: str = "hf-vit-b16-224-in21k",
         optimizer: str = "sgd",
         lr: float = 3e-2,
         betas: Tuple[float, float] = (0.9, 0.999),
@@ -98,17 +101,29 @@ class ClassificationModel(pl.LightningModule):
 
         # Initialize network
         try:
-            model_path = MODEL_DICT[model_name]
+            model_path = MODEL_DICT[self.model_name]
         except:
             raise ValueError(
                 f"{model_name} is not an available dataset. Should be one of {[k for k in MODEL_DICT.keys()]}"
             )
-        self.net = AutoModelForImageClassification.from_pretrained(
-            model_path,
-            num_labels=self.n_classes,
-            ignore_mismatched_sizes=True,
-            image_size=self.image_size,
-        )
+        # Huggingface model
+        if self.model_name.startswith("hf-"):
+            self.model_type = "hf"
+            self.net = AutoModelForImageClassification.from_pretrained(
+                model_path,
+                num_labels=self.n_classes,
+                ignore_mismatched_sizes=True,
+                image_size=self.image_size,
+            )
+        # Timm model
+        else:
+            assert self.image_size == 224
+            self.model_type = "timm"
+            self.net = timm.create_model(
+                model_path,
+                pretrained=True,
+                num_classes=self.n_classes,
+            )
 
         # Load checkpoint weights
         if self.weights:
@@ -122,13 +137,12 @@ class ClassificationModel(pl.LightningModule):
                     k = k.replace("net" + ".", "")
                     new_state_dict[k] = v
 
-            # Load weights
             self.net.load_state_dict(new_state_dict, strict=True)
 
         # Freeze transformer layers if linear probing
         if self.linear_probe:
             for name, param in self.net.named_parameters():
-                if "classifier" not in name:
+                if "classifier" not in name and "head" not in name:
                     param.requires_grad = False
 
         # Define metrics
@@ -163,7 +177,11 @@ class ClassificationModel(pl.LightningModule):
     def forward(self, x):
         if self.channels_last:
             x = x.to(memory_format=torch.channels_last)
-        return self.net(pixel_values=x).logits
+
+        if self.model_type == "hf":
+            return self.net(pixel_values=x).logits
+        else:
+            return self.net(x)
 
     def shared_step(self, batch, mode="train"):
         x, y = batch
@@ -176,7 +194,7 @@ class ClassificationModel(pl.LightningModule):
         # if mode == "train":
         #     from torchvision.utils import save_image
 
-        #     save_image(x[:16], "0.png", normalize=True)
+        #     save_image(x[:16], "things/0.png", normalize=True)
         #     exit()
 
         # Pass through network
