@@ -137,7 +137,7 @@ class ClassificationModel(pl.LightningModule):
                     k = k.replace("net" + ".", "")
                     new_state_dict[k] = v
 
-            self.net.load_state_dict(new_state_dict, strict=True)
+            self.net.load_state_dict(new_state_dict, strict=False)
 
         # Freeze transformer layers if linear probing
         if self.linear_probe:
