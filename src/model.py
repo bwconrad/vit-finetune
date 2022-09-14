@@ -237,8 +237,8 @@ class ClassificationModel(pl.LightningModule):
 
         # Calculate accuracy per class
         per_class_acc = []
-        for tp, fp, tn, fn, sup in combined_stats:
-            acc = (tp + tn) / (tp + tn + fp + fn)
+        for tp, _, _, _, sup in combined_stats:
+            acc = tp / sup
             per_class_acc.append((acc.item(), sup.item()))
 
         # Save to csv
