@@ -16,7 +16,7 @@ parser.add_argument(
 args = parser.parse_args()
 args["logger"] = False  # Disable logging
 
-model = model_class.load_from_checkpoint(args["checkpoint"])
+model = model_class.load_from_checkpoint(args["checkpoint"], weights=None)
 dm = dm_class.load_from_checkpoint(args["checkpoint"])
 
 trainer = pl.Trainer.from_argparse_args(args)
