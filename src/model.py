@@ -1,5 +1,6 @@
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
+import pandas as pd
 import pytorch_lightning as pl
 import timm
 import torch
@@ -8,6 +9,7 @@ from torch.optim import SGD, Adam, AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torchmetrics import MetricCollection
 from torchmetrics.classification.accuracy import Accuracy
+from torchmetrics.classification.stat_scores import StatScores
 from transformers.models.auto.modeling_auto import \
     AutoModelForImageClassification
 from transformers.optimization import get_cosine_schedule_with_warmup
@@ -137,7 +139,7 @@ class ClassificationModel(pl.LightningModule):
                     k = k.replace("net" + ".", "")
                     new_state_dict[k] = v
 
-            self.net.load_state_dict(new_state_dict, strict=False)
+            self.net.load_state_dict(new_state_dict, strict=True)
 
         # Freeze transformer layers if linear probing
         if self.linear_probe:
@@ -153,7 +155,11 @@ class ClassificationModel(pl.LightningModule):
             {"acc": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
         )
         self.test_metrics = MetricCollection(
-            {"acc": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
+            {
+                "acc": Accuracy(top_k=1),
+                "acc_top5": Accuracy(top_k=5),
+                "stats": StatScores(reduce="macro", num_classes=self.n_classes),
+            }
         )
 
         # Define loss
@@ -207,8 +213,11 @@ class ClassificationModel(pl.LightningModule):
         # Log
         self.log(f"{mode}_loss", loss, on_epoch=True)
         for k, v in metrics.items():
-            self.log(f"{mode}_{k.lower()}", v, on_epoch=True)
+            if len(v.size()) == 0:
+                self.log(f"{mode}_{k.lower()}", v, on_epoch=True)
 
+        if mode == "test":
+            return metrics["stats"]
         return loss
 
     def training_step(self, batch, _):
@@ -220,6 +229,21 @@ class ClassificationModel(pl.LightningModule):
 
     def test_step(self, batch, _):
         return self.shared_step(batch, "test")
+
+    def test_epoch_end(self, outputs: List[torch.Tensor]):
+        """Save per-class accuracies to csv"""
+        # Aggregate all batch stats
+        combined_stats = torch.sum(torch.stack(outputs, dim=-1), dim=-1)
+
+        # Calculate accuracy per class
+        per_class_acc = []
+        for tp, fp, tn, fn, sup in combined_stats:
+            acc = (tp + tn) / (tp + tn + fp + fn)
+            per_class_acc.append((acc.item(), sup.item()))
+
+        # Save to csv
+        df = pd.DataFrame(per_class_acc, columns=["acc", "n"])
+        df.to_csv("per-class-acc-test.csv")
 
     def configure_optimizers(self):
         # Initialize optimizer
