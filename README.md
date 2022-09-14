@@ -15,6 +15,7 @@ Code for fine-tuning ViT models on various classification datasets.
 |[Describable Textures Dataset](https://www.robots.ox.ac.uk/~vgg/data/dtd/) | `dtd`|
 |[Stanford Cars](https://ai.stanford.edu/~jkrause/cars/car_dataset.html) | `cars`|
 |[FGVC Aircraft](https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/) | `aircraft`|
+|[Image Folder](https://pytorch.org/vision/stable/generated/torchvision.datasets.ImageFolder.html) | `custom`|
 
 
 ## Requirements
@@ -53,7 +54,7 @@ All results are from fine-tuned ViT-B/16 models which were pretrained on ImageNe
 |:------------------:|:-----------:|:-------------:|:-------------:|:--------:|:------------------------------:|
 | CIFAR-10           | 5000        | 500           | 0.01          | 99.00    | [Link](configs/cifar10.yaml)   |
 | CIFAR-100          | 5000        | 500           | 0.01          | 92.89    | [Link](configs/cifar100.yaml)  |
-| Oxford Flowers-102 | 1000        | 100           | 0.03          | 98.89    | [Link](configs/flowers102.yaml)|
+| Oxford Flowers-102 | 1000        | 100           | 0.03          | 99.02    | [Link](configs/flowers102.yaml)|
 | Oxford-IIIT Pets   | 2000        | 200           | 0.01          | 93.68    | [Link](configs/pets37.yaml)    |
 | Food-101           | 5000        | 500           | 0.03          | 90.67    | [Link](configs/food101.yaml)   |
 
