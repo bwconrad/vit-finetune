@@ -2,6 +2,7 @@ data/
 output/
 things/
 weights/
+notebooks/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

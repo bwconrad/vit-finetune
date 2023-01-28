@@ -56,7 +56,8 @@ class ClassificationModel(pl.LightningModule):
         cutmix_alpha: float = 0.0,
         mix_prob: float = 1.0,
         label_smoothing: float = 0.0,
-        linear_probe: bool = False,
+        partial_finetune: bool = False,
+        unfreeze_param_names: List = [],
         image_size: int = 224,
         weights: Optional[str] = None,
     ):
@@ -77,7 +78,9 @@ class ClassificationModel(pl.LightningModule):
             cutmix_alpha: Cutmix alpha value
             mix_prob: Probability of applying mixup or cutmix
             label_smoothing: Amount of label smoothing
-            linear_probe: Only train the classifier and keep other layers frozen
+            partial_finetune: Only train the classifier and model weights defined in unfreeze_param_names
+            unfreeze_param_names: Names of parameters to unfreeze during partial finetuning
+                (can be partial names e.g. "bias", "layernorm")
             image_size: Size of input images
             weights: Path of checkpoint to load weights from. E.g when resuming after linear probing
         """
@@ -97,7 +100,8 @@ class ClassificationModel(pl.LightningModule):
         self.cutmix_alpha = cutmix_alpha
         self.mix_prob = mix_prob
         self.label_smoothing = label_smoothing
-        self.linear_probe = linear_probe
+        self.partial_finetune = partial_finetune
+        self.unfreeze_param_names = unfreeze_param_names
         self.image_size = image_size
         self.weights = weights
 
@@ -142,23 +146,36 @@ class ClassificationModel(pl.LightningModule):
             self.net.load_state_dict(new_state_dict, strict=True)
 
         # Freeze transformer layers if linear probing
-        if self.linear_probe:
+        if self.partial_finetune:
+            unfreeze_names = self.unfreeze_param_names + ["head", "classifier"]
+            names = []
             for name, param in self.net.named_parameters():
-                if "classifier" not in name and "head" not in name:
+                if all([s not in name for s in unfreeze_names]):
                     param.requires_grad = False
+                else:
+                    names.append(name)
+            print(f"Training only the following parameters:\n{names}")
 
         # Define metrics
         self.train_metrics = MetricCollection(
-            {"acc": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
+            {
+                "acc": Accuracy(task="multiclass", top_k=1),
+                "acc_top5": Accuracy(task="multiclass", top_k=5),
+            }
         )
         self.val_metrics = MetricCollection(
-            {"acc": Accuracy(top_k=1), "acc_top5": Accuracy(top_k=5)}
+            {
+                "acc": Accuracy(task="multiclass", top_k=1),
+                "acc_top5": Accuracy(task="multiclass", top_k=5),
+            }
         )
         self.test_metrics = MetricCollection(
             {
-                "acc": Accuracy(top_k=1),
-                "acc_top5": Accuracy(top_k=5),
-                "stats": StatScores(reduce="macro", num_classes=self.n_classes),
+                "acc": Accuracy(task="multiclass", top_k=1),
+                "acc_top5": Accuracy(task="multiclass", top_k=5),
+                "stats": StatScores(
+                    task="multiclass", reduce="macro", num_classes=self.n_classes
+                ),
             }
         )
 
@@ -196,12 +213,6 @@ class ClassificationModel(pl.LightningModule):
             x, y = self.mixup(x, y)
         else:
             y = F.one_hot(y, num_classes=self.n_classes).float()
-
-        # if mode == "train":
-        #     from torchvision.utils import save_image
-
-        #     save_image(x[:16], "things/0.png", normalize=True)
-        #     exit()
 
         # Pass through network
         pred = self(x)

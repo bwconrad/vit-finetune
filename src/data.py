@@ -1,6 +1,6 @@
 import os
 from functools import partial
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
@@ -75,12 +75,16 @@ class DataModule(pl.LightningDataModule):
         n_classes: Optional[int] = None,
         size: int = 224,
         min_scale: float = 0.08,
-        batch_size: int = 32,
-        workers: int = 4,
+        max_scale: float = 1.0,
+        flip_prob: float = 0.5,
         rand_aug_n: int = 0,
         rand_aug_m: int = 9,
         erase_prob: float = 0.0,
         use_trivial_aug: bool = False,
+        mean: Tuple = (0.5, 0.5, 0.5),
+        std: Tuple = (0.5, 0.5, 0.5),
+        batch_size: int = 32,
+        workers: int = 4,
     ):
         """Classification Datamodule
 
@@ -91,12 +95,16 @@ class DataModule(pl.LightningDataModule):
             n_classes: Number of classes when using a custom dataset
             size: Image size
             min_scale: Min crop scale
-            batch_size: Number of batch samples
-            workers: Number of data loader workers
+            max_scale: Max crop scale
+            flip_prob: Probability of applying a horizontal flip
             rand_aug_n: RandAugment number of augmentations
             rand_aug_m: RandAugment magnitude of augmentations
             erase_prob: Probability of applying random erasing
             use_trivial_aug: Apply TrivialAugment instead of RandAugment
+            mean: Normalization means
+            std: Normalization standard deviations
+            batch_size: Number of batch samples
+            workers: Number of data loader workers
         """
         super().__init__()
         self.save_hyperparameters()
@@ -104,16 +112,19 @@ class DataModule(pl.LightningDataModule):
         self.root = root
         self.size = size
         self.min_scale = min_scale
-        self.batch_size = batch_size
-        self.workers = workers
+        self.max_scale = max_scale
+        self.flip_prob = flip_prob
         self.rand_aug_n = rand_aug_n
         self.rand_aug_m = rand_aug_m
         self.erase_prob = erase_prob
         self.use_trivial_aug = use_trivial_aug
+        self.mean = mean
+        self.std = std
+        self.batch_size = batch_size
+        self.workers = workers
 
         # Define dataset
         if self.dataset == "custom":
-            # Custom dataset
             assert n_classes is not None
             self.n_classes = n_classes
 
@@ -126,8 +137,8 @@ class DataModule(pl.LightningDataModule):
             self.test_dataset_fn = partial(
                 ImageFolder, root=os.path.join(self.root, "test")
             )
+            print(f"Using custom dataset from {self.root}")
         else:
-            # Built-in dataset
             try:
                 (
                     self.train_dataset_fn,
@@ -144,14 +155,14 @@ class DataModule(pl.LightningDataModule):
         self.transforms_train = transforms.Compose(
             [
                 transforms.RandomResizedCrop(
-                    (self.size, self.size), scale=(self.min_scale, 1)
+                    (self.size, self.size), scale=(self.min_scale, self.max_scale)
                 ),
-                transforms.RandomHorizontalFlip(),
+                transforms.RandomHorizontalFlip(self.flip_prob),
                 transforms.TrivialAugmentWide()
                 if self.use_trivial_aug
                 else transforms.RandAugment(self.rand_aug_n, self.rand_aug_m),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+                transforms.Normalize(mean=self.mean, std=self.std),
                 transforms.RandomErasing(p=self.erase_prob),
             ]
         )
@@ -159,7 +170,7 @@ class DataModule(pl.LightningDataModule):
             [
                 transforms.Resize((self.size, self.size)),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+                transforms.Normalize(mean=self.mean, std=self.std),
             ]
         )
 
