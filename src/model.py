@@ -2,7 +2,6 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 import pytorch_lightning as pl
-import timm
 import torch
 import torch.nn.functional as F
 from torch.optim import SGD, Adam, AdamW
@@ -14,37 +13,36 @@ from transformers.models.auto.modeling_auto import \
     AutoModelForImageClassification
 from transformers.optimization import get_cosine_schedule_with_warmup
 
-from .loss import SoftTargetCrossEntropy
-from .mixup import Mixup
+from src.loss import SoftTargetCrossEntropy
+from src.mixup import Mixup
 
 MODEL_DICT = {
-    "hf-vit-b16-224-in21k": "google/vit-base-patch16-224-in21k",
-    "hf-vit-b32-224-in21k": "google/vit-base-patch32-224-in21k",
-    "hf-vit-l32-224-in21k": "google/vit-large-patch32-224-in21k",
-    "hf-vit-l15-224-in21k": "google/vit-large-patch16-224-in21k",
-    "hf-vit-h14-224-in21k": "google/vit-huge-patch14-224-in21k",
-    "hf-vit-b16-224": "google/vit-base-patch16-224",
-    "hf-vit-l16-224": "google/vit-large-patch16-224",
-    "hf-vit-b16-384": "google/vit-base-patch16-384",
-    "hf-vit-b32-384": "google/vit-base-patch32-384",
-    "hf-vit-l16-384": "google/vit-large-patch16-384",
-    "hf-vit-l32-384": "google/vit-large-patch32-384",
-    "hf-vit-b16-224-dino": "facebook/dino-vitb16",
-    "hf-vit-b8-224-dino": "facebook/dino-vitb8",
-    "hf-vit-s16-224-dino": "facebook/dino-vits16",
-    "hf-vit-s8-224-dino": "facebook/dino-vits8",
-    "hf-beit-b16-224-in21k": "microsoft/beit-base-patch16-224-pt22k-ft22k",
-    "hf-beit-l16-224-in21k": "microsoft/beit-large-patch16-224-pt22k-ft22k",
-    "timm-beitv2-b16-224-in21k": "beitv2_base_patch16_224_in22k",
+    "vit-b16-224-in21k": "google/vit-base-patch16-224-in21k",
+    "vit-b32-224-in21k": "google/vit-base-patch32-224-in21k",
+    "vit-l32-224-in21k": "google/vit-large-patch32-224-in21k",
+    "vit-l15-224-in21k": "google/vit-large-patch16-224-in21k",
+    "vit-h14-224-in21k": "google/vit-huge-patch14-224-in21k",
+    "vit-b16-224": "google/vit-base-patch16-224",
+    "vit-l16-224": "google/vit-large-patch16-224",
+    "vit-b16-384": "google/vit-base-patch16-384",
+    "vit-b32-384": "google/vit-base-patch32-384",
+    "vit-l16-384": "google/vit-large-patch16-384",
+    "vit-l32-384": "google/vit-large-patch32-384",
+    "vit-b16-224-dino": "facebook/dino-vitb16",
+    "vit-b8-224-dino": "facebook/dino-vitb8",
+    "vit-s16-224-dino": "facebook/dino-vits16",
+    "vit-s8-224-dino": "facebook/dino-vits8",
+    "beit-b16-224-in21k": "microsoft/beit-base-patch16-224-pt22k-ft22k",
+    "beit-l16-224-in21k": "microsoft/beit-large-patch16-224-pt22k-ft22k",
 }
 
 
 class ClassificationModel(pl.LightningModule):
     def __init__(
         self,
-        model_name: str = "hf-vit-b16-224-in21k",
+        model_name: str = "vit-b16-224-in21k",
         optimizer: str = "sgd",
-        lr: float = 3e-2,
+        lr: float = 1e-2,
         betas: Tuple[float, float] = (0.9, 0.999),
         momentum: float = 0.9,
         weight_decay: float = 0.0,
@@ -56,33 +54,31 @@ class ClassificationModel(pl.LightningModule):
         cutmix_alpha: float = 0.0,
         mix_prob: float = 1.0,
         label_smoothing: float = 0.0,
-        partial_finetune: bool = False,
-        unfreeze_param_names: List = [],
+        linear_probe: bool = False,
         image_size: int = 224,
         weights: Optional[str] = None,
     ):
         """Classification Model
 
         Args:
-            model_name: Name of model checkpoint [vit-b16-224-in21k]
-            optimizer: Name of optimizer [adam, adamw, sgd]
+            model_name: Name of model checkpoint
+            optimizer: Name of optimizer. One of [adam, adamw, sgd]
             lr: Learning rate
             betas: Adam betas parameters
             momentum: SGD momentum parameter
             weight_decay: Optimizer weight decay
-            scheduler: Name of learning rate scheduler [cosine, none]
+            scheduler: Name of learning rate scheduler. One of [cosine, none]
             warmup_steps: Number of warmup epochs
-            n_classes: Number of target class. AUTOMATICALLY SET BY DATAMODULE
+            n_classes: Number of target class.
             channels_last: Change to channels last memory format for possible training speed up
             mixup_alpha: Mixup alpha value
             cutmix_alpha: Cutmix alpha value
-            mix_prob: Probability of applying mixup or cutmix
+            mix_prob: Probability of applying mixup or cutmix (applies when mixup_alpha and/or
+                cutmix_alpha are >0)
             label_smoothing: Amount of label smoothing
-            partial_finetune: Only train the classifier and model weights defined in unfreeze_param_names
-            unfreeze_param_names: Names of parameters to unfreeze during partial finetuning
-                (can be partial names e.g. "bias", "layernorm")
+            linear_probe: Only train the classifier and keep other layers frozen
             image_size: Size of input images
-            weights: Path of checkpoint to load weights from. E.g when resuming after linear probing
+            weights: Path of checkpoint to load weights from (e.g when resuming after linear probing)
         """
         super().__init__()
         self.save_hyperparameters()
@@ -100,8 +96,7 @@ class ClassificationModel(pl.LightningModule):
         self.cutmix_alpha = cutmix_alpha
         self.mix_prob = mix_prob
         self.label_smoothing = label_smoothing
-        self.partial_finetune = partial_finetune
-        self.unfreeze_param_names = unfreeze_param_names
+        self.linear_probe = linear_probe
         self.image_size = image_size
         self.weights = weights
 
@@ -112,24 +107,13 @@ class ClassificationModel(pl.LightningModule):
             raise ValueError(
                 f"{model_name} is not an available dataset. Should be one of {[k for k in MODEL_DICT.keys()]}"
             )
-        # Huggingface model
-        if self.model_name.startswith("hf-"):
-            self.model_type = "hf"
-            self.net = AutoModelForImageClassification.from_pretrained(
-                model_path,
-                num_labels=self.n_classes,
-                ignore_mismatched_sizes=True,
-                image_size=self.image_size,
-            )
-        # Timm model
-        else:
-            assert self.image_size == 224
-            self.model_type = "timm"
-            self.net = timm.create_model(
-                model_path,
-                pretrained=True,
-                num_classes=self.n_classes,
-            )
+
+        self.net = AutoModelForImageClassification.from_pretrained(
+            model_path,
+            num_labels=self.n_classes,
+            ignore_mismatched_sizes=True,
+            image_size=self.image_size,
+        )
 
         # Load checkpoint weights
         if self.weights:
@@ -146,35 +130,36 @@ class ClassificationModel(pl.LightningModule):
             self.net.load_state_dict(new_state_dict, strict=True)
 
         # Freeze transformer layers if linear probing
-        if self.partial_finetune:
-            unfreeze_names = self.unfreeze_param_names + ["head", "classifier"]
-            names = []
+        if self.linear_probe:
             for name, param in self.net.named_parameters():
-                if all([s not in name for s in unfreeze_names]):
+                if "classifier" not in name:
                     param.requires_grad = False
-                else:
-                    names.append(name)
-            print(f"Training only the following parameters:\n{names}")
 
         # Define metrics
         self.train_metrics = MetricCollection(
             {
-                "acc": Accuracy(task="multiclass", top_k=1),
-                "acc_top5": Accuracy(task="multiclass", top_k=5),
+                "acc": Accuracy(num_classes=self.n_classes, task="multiclass", top_k=1),
+                "acc_top5": Accuracy(
+                    num_classes=self.n_classes, task="multiclass", top_k=5
+                ),
             }
         )
         self.val_metrics = MetricCollection(
             {
-                "acc": Accuracy(task="multiclass", top_k=1),
-                "acc_top5": Accuracy(task="multiclass", top_k=5),
+                "acc": Accuracy(num_classes=self.n_classes, task="multiclass", top_k=1),
+                "acc_top5": Accuracy(
+                    num_classes=self.n_classes, task="multiclass", top_k=5
+                ),
             }
         )
         self.test_metrics = MetricCollection(
             {
-                "acc": Accuracy(task="multiclass", top_k=1),
-                "acc_top5": Accuracy(task="multiclass", top_k=5),
+                "acc": Accuracy(num_classes=self.n_classes, task="multiclass", top_k=1),
+                "acc_top5": Accuracy(
+                    num_classes=self.n_classes, task="multiclass", top_k=5
+                ),
                 "stats": StatScores(
-                    task="multiclass", reduce="macro", num_classes=self.n_classes
+                    task="multiclass", average=None, num_classes=self.n_classes
                 ),
             }
         )
@@ -201,15 +186,13 @@ class ClassificationModel(pl.LightningModule):
         if self.channels_last:
             x = x.to(memory_format=torch.channels_last)
 
-        if self.model_type == "hf":
-            return self.net(pixel_values=x).logits
-        else:
-            return self.net(x)
+        return self.net(pixel_values=x).logits
 
     def shared_step(self, batch, mode="train"):
         x, y = batch
 
         if mode == "train":
+            # Only converts targets to one-hot if no label smoothing, mixup or cutmix is set
             x, y = self.mixup(x, y)
         else:
             y = F.one_hot(y, num_classes=self.n_classes).float()
@@ -255,6 +238,7 @@ class ClassificationModel(pl.LightningModule):
         # Save to csv
         df = pd.DataFrame(per_class_acc, columns=["acc", "n"])
         df.to_csv("per-class-acc-test.csv")
+        print("Saved per-class results in per-class-acc-test.csv")
 
     def configure_optimizers(self):
         # Initialize optimizer

@@ -9,9 +9,9 @@ data:
   root: data/
   size: 224
   batch_size: 128
-  workers: 6
+  workers: 4
 model:
-  arch: vit-b16-224-in21k
+  model_name: vit-b16-224-in21k
   optimizer: sgd
   lr: 0.03
   momentum: 0.9

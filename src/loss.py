@@ -7,7 +7,7 @@ class SoftTargetCrossEntropy(torch.nn.Module):
     From: https://github.com/rwightman/pytorch-image-models/blob/master/timm/loss/cross_entropy.py
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(SoftTargetCrossEntropy, self).__init__()
 
     def forward(self, x: torch.Tensor, target: torch.Tensor) -> torch.Tensor:

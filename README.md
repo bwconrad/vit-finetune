@@ -22,6 +22,7 @@ Code for fine-tuning ViT models on various classification datasets.
 - Python 3.8+
 - `pip install -r requirements.txt`
 
+
 ## Usage
 ### Training
 - To fine-tune a ViT-B/16 model on CIFAR-100 run:
@@ -35,16 +36,12 @@ python train.py --accelerator gpu --devices 1 --precision 16 --config path/to/co
 ```
 - To get a list of all arguments run `python train.py --help`
 
-
 ### Evaluate
 To evaluate a trained model on its test set run:
 ```
 python test.py --accelerator gpu --devices 1 --precision 16 --checkpoint path/to/checkpoint
 ```
 - __Note__: Make sure the `--precision` argument is set to the same level as used during training.
-
-
-
 
 
 ## Results

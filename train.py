@@ -12,7 +12,7 @@ dm_class = DataModule
 parser = MyLightningArgumentParser()
 parser.add_lightning_class_args(pl.Trainer, None)  # type:ignore
 parser.add_lightning_class_args(dm_class, "data")
-parser.add_lightning_class_args(model_class, "model")
+parser.add_lightning_class_args(model_class, "model", skip=["n_classes"])
 parser.link_arguments("data.size", "model.image_size")
 parser.add_argument(
     "--test_at_end", action="store_true", help="Evaluate on test set after training"
@@ -28,7 +28,7 @@ checkpoint_callback = ModelCheckpoint(
     save_last=True,
 )
 dm = dm_class(**args["data"])
-args["model"]["n_classes"] = dm.n_classes  # Get the num of classes for the dataset
+args["model"]["n_classes"] = dm.num_classes  # Get the number of classes for the dataset
 model = model_class(**args["model"])
 trainer = pl.Trainer.from_argparse_args(
     args, logger=logger, callbacks=[checkpoint_callback], check_val_every_n_epoch=None

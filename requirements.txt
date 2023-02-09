@@ -1,12 +1,10 @@
 jsonargparse==4.19.0
-lightning_lite==1.8.6
-matplotlib==3.6.3
-numpy==1.24.1
+numpy==1.23.3
 pandas==1.5.3
-pytorch_lightning[extra]==1.8.6
-timm==0.8.6.dev0
+pytorch_lightning[extra]==1.9.0
 torch==1.13.1
-torchmetrics==0.11.0
+torchmetrics==0.11.1
 torchvision==0.14.1
-transformers==4.25.1
+transformers==4.26.0
 wandb==0.12.15
+scipy==1.10.0

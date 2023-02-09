@@ -2,13 +2,13 @@ from argparse import Namespace
 from typing import Any, Callable, List, Optional, Type, Union
 
 from jsonargparse import ActionConfigFile, class_from_function
-from lightning_lite.utilities.exceptions import MisconfigurationException
 from pytorch_lightning import (Callback, LightningDataModule, LightningModule,
                                Trainer)
 from pytorch_lightning.cli import LightningArgumentParser
 from pytorch_lightning.loggers import Logger
 from pytorch_lightning.loggers.csv_logs import CSVLogger
 from pytorch_lightning.loggers.wandb import WandbLogger
+from pytorch_lightning.utilities.exceptions import MisconfigurationException
 
 
 class MyLightningArgumentParser(LightningArgumentParser):

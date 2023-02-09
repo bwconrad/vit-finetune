@@ -1,6 +1,6 @@
 import os
 from functools import partial
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
@@ -72,7 +72,7 @@ class DataModule(pl.LightningDataModule):
         self,
         dataset: str = "cifar10",
         root: str = "data/",
-        n_classes: Optional[int] = None,
+        num_classes: Optional[int] = None,
         size: int = 224,
         min_scale: float = 0.08,
         max_scale: float = 1.0,
@@ -81,26 +81,26 @@ class DataModule(pl.LightningDataModule):
         rand_aug_m: int = 9,
         erase_prob: float = 0.0,
         use_trivial_aug: bool = False,
-        mean: Tuple = (0.5, 0.5, 0.5),
-        std: Tuple = (0.5, 0.5, 0.5),
+        mean: Sequence = (0.5, 0.5, 0.5),
+        std: Sequence = (0.5, 0.5, 0.5),
         batch_size: int = 32,
         workers: int = 4,
     ):
         """Classification Datamodule
 
         Args:
-            dataset: Name of dataset [custom, cifar10, cifar100, flowers102
+            dataset: Name of dataset. One of [custom, cifar10, cifar100, flowers102
                      food101, pets37, stl10, dtd, aircraft, cars]
             root: Download path for built-in datasets or path to dataset directory for custom datasets
-            n_classes: Number of classes when using a custom dataset
-            size: Image size
+            num_classes: Number of classes when using a custom dataset
+            size: Crop size
             min_scale: Min crop scale
             max_scale: Max crop scale
-            flip_prob: Probability of applying a horizontal flip
+            flip_prob: Probability of applying horizontal flip
             rand_aug_n: RandAugment number of augmentations
             rand_aug_m: RandAugment magnitude of augmentations
             erase_prob: Probability of applying random erasing
-            use_trivial_aug: Apply TrivialAugment instead of RandAugment
+            use_trivial_aug: Use TrivialAugment instead of RandAugment
             mean: Normalization means
             std: Normalization standard deviations
             batch_size: Number of batch samples
@@ -125,8 +125,10 @@ class DataModule(pl.LightningDataModule):
 
         # Define dataset
         if self.dataset == "custom":
-            assert n_classes is not None
-            self.n_classes = n_classes
+            assert (
+                num_classes is not None
+            ), "Must set --data.num_classes when using a custom dataset"
+            self.num_classes = num_classes
 
             self.train_dataset_fn = partial(
                 ImageFolder, root=os.path.join(self.root, "train")
@@ -144,7 +146,7 @@ class DataModule(pl.LightningDataModule):
                     self.train_dataset_fn,
                     self.val_dataset_fn,
                     self.test_dataset_fn,
-                    self.n_classes,
+                    self.num_classes,
                 ) = DATASET_DICT[self.dataset]
                 print(f"Using the {self.dataset} dataset")
             except:
@@ -155,7 +157,8 @@ class DataModule(pl.LightningDataModule):
         self.transforms_train = transforms.Compose(
             [
                 transforms.RandomResizedCrop(
-                    (self.size, self.size), scale=(self.min_scale, self.max_scale)
+                    (self.size, self.size),
+                    scale=(self.min_scale, self.max_scale),
                 ),
                 transforms.RandomHorizontalFlip(self.flip_prob),
                 transforms.TrivialAugmentWide()
@@ -168,7 +171,9 @@ class DataModule(pl.LightningDataModule):
         )
         self.transforms_test = transforms.Compose(
             [
-                transforms.Resize((self.size, self.size)),
+                transforms.Resize(
+                    (self.size, self.size),
+                ),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=self.mean, std=self.std),
             ]
@@ -229,20 +234,3 @@ class DataModule(pl.LightningDataModule):
             num_workers=self.workers,
             pin_memory=True,
         )
-
-
-if __name__ == "__main__":
-    dm = DataModule(dataset="custom", root="data/dafre", n_classes=3263)
-    dm.setup()
-    dl = dm.train_dataloader()
-    print(len(dm.train_dataset))
-    print(len(dm.val_dataset))
-
-    for x, y in dl:
-        print(x.size())
-        print(x.min())
-        print(x.max())
-        print(x.dtype)
-        print(y.size())
-        print(y.dtype)
-        break
