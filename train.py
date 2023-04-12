@@ -40,4 +40,4 @@ trainer.fit(model, dm)
 
 # Test
 if args["test_at_end"]:
-    trainer.test()
+    trainer.test(model,dm)
