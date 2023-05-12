@@ -9,8 +9,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torchmetrics import MetricCollection
 from torchmetrics.classification.accuracy import Accuracy
 from torchmetrics.classification.stat_scores import StatScores
-from transformers.models.auto.modeling_auto import \
-    AutoModelForImageClassification
+from transformers.models.auto.modeling_auto import AutoModelForImageClassification
 from transformers.optimization import get_cosine_schedule_with_warmup
 
 from src.loss import SoftTargetCrossEntropy
@@ -48,7 +47,7 @@ class ClassificationModel(pl.LightningModule):
         weight_decay: float = 0.0,
         scheduler: str = "cosine",
         warmup_steps: int = 0,
-        n_classes: int = 10,
+        num_classes: int = 10,
         channels_last: bool = False,
         mixup_alpha: float = 0.0,
         cutmix_alpha: float = 0.0,
@@ -69,7 +68,7 @@ class ClassificationModel(pl.LightningModule):
             weight_decay: Optimizer weight decay
             scheduler: Name of learning rate scheduler. One of [cosine, none]
             warmup_steps: Number of warmup epochs
-            n_classes: Number of target class.
+            num_classes: Number of target class.
             channels_last: Change to channels last memory format for possible training speed up
             mixup_alpha: Mixup alpha value
             cutmix_alpha: Cutmix alpha value
@@ -90,7 +89,7 @@ class ClassificationModel(pl.LightningModule):
         self.weight_decay = weight_decay
         self.scheduler = scheduler
         self.warmup_steps = warmup_steps
-        self.n_classes = n_classes
+        self.num_classes = num_classes
         self.channels_last = channels_last
         self.mixup_alpha = mixup_alpha
         self.cutmix_alpha = cutmix_alpha
@@ -105,12 +104,12 @@ class ClassificationModel(pl.LightningModule):
             model_path = MODEL_DICT[self.model_name]
         except:
             raise ValueError(
-                f"{model_name} is not an available dataset. Should be one of {[k for k in MODEL_DICT.keys()]}"
+                f"{model_name} is not an available model. Should be one of {[k for k in MODEL_DICT.keys()]}"
             )
 
         self.net = AutoModelForImageClassification.from_pretrained(
             model_path,
-            num_labels=self.n_classes,
+            num_labels=self.num_classes,
             ignore_mismatched_sizes=True,
             image_size=self.image_size,
         )
@@ -138,28 +137,34 @@ class ClassificationModel(pl.LightningModule):
         # Define metrics
         self.train_metrics = MetricCollection(
             {
-                "acc": Accuracy(num_classes=self.n_classes, task="multiclass", top_k=1),
+                "acc": Accuracy(
+                    num_classes=self.num_classes, task="multiclass", top_k=1
+                ),
                 "acc_top5": Accuracy(
-                    num_classes=self.n_classes, task="multiclass", top_k=5
+                    num_classes=self.num_classes, task="multiclass", top_k=5
                 ),
             }
         )
         self.val_metrics = MetricCollection(
             {
-                "acc": Accuracy(num_classes=self.n_classes, task="multiclass", top_k=1),
+                "acc": Accuracy(
+                    num_classes=self.num_classes, task="multiclass", top_k=1
+                ),
                 "acc_top5": Accuracy(
-                    num_classes=self.n_classes, task="multiclass", top_k=5
+                    num_classes=self.num_classes, task="multiclass", top_k=5
                 ),
             }
         )
         self.test_metrics = MetricCollection(
             {
-                "acc": Accuracy(num_classes=self.n_classes, task="multiclass", top_k=1),
+                "acc": Accuracy(
+                    num_classes=self.num_classes, task="multiclass", top_k=1
+                ),
                 "acc_top5": Accuracy(
-                    num_classes=self.n_classes, task="multiclass", top_k=5
+                    num_classes=self.num_classes, task="multiclass", top_k=5
                 ),
                 "stats": StatScores(
-                    task="multiclass", average=None, num_classes=self.n_classes
+                    task="multiclass", average=None, num_classes=self.num_classes
                 ),
             }
         )
@@ -173,7 +178,7 @@ class ClassificationModel(pl.LightningModule):
             cutmix_alpha=self.cutmix_alpha,
             prob=self.mix_prob,
             label_smoothing=self.label_smoothing,
-            num_classes=self.n_classes,
+            num_classes=self.num_classes,
         )
 
         # Change to channel last memory format
@@ -195,7 +200,7 @@ class ClassificationModel(pl.LightningModule):
             # Only converts targets to one-hot if no label smoothing, mixup or cutmix is set
             x, y = self.mixup(x, y)
         else:
-            y = F.one_hot(y, num_classes=self.n_classes).float()
+            y = F.one_hot(y, num_classes=self.num_classes).float()
 
         # Pass through network
         pred = self(x)
