@@ -30,7 +30,7 @@ class MyLightningCLI(LightningCLI):
         )
         parser.link_arguments("data.size", "model.image_size")
         parser.link_arguments(
-            "data.num_classes", "model.num_classes", apply_on="instantiate"
+            "data.num_classes", "model.n_classes", apply_on="instantiate"
         )
         parser.add_argument(
             "--test_at_end",
