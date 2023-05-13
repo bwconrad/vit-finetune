@@ -216,6 +216,8 @@ class ClassificationModel(pl.LightningModule):
             print("Using channel last memory format")
             self = self.to(memory_format=torch.channels_last)
 
+        self.test_metric_outputs = []
+
     def forward(self, x):
         if self.channels_last:
             x = x.to(memory_format=torch.channels_last)
@@ -245,7 +247,7 @@ class ClassificationModel(pl.LightningModule):
                 self.log(f"{mode}_{k.lower()}", v, on_epoch=True)
 
         if mode == "test":
-            return metrics["stats"]
+            self.test_metric_outputs.append(metrics["stats"])
 
         return loss
 
@@ -259,10 +261,12 @@ class ClassificationModel(pl.LightningModule):
     def test_step(self, batch, _):
         return self.shared_step(batch, "test")
 
-    def test_epoch_end(self, outputs: List[torch.Tensor]):
+    def on_test_epoch_end(self):
         """Save per-class accuracies to csv"""
         # Aggregate all batch stats
-        combined_stats = torch.sum(torch.stack(outputs, dim=-1), dim=-1)
+        combined_stats = torch.sum(
+            torch.stack(self.test_metric_outputs, dim=-1), dim=-1
+        )
 
         # Calculate accuracy per class
         per_class_acc = []
