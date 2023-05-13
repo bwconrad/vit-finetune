@@ -40,6 +40,9 @@ class MyLightningCLI(LightningCLI):
         )
 
 
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
+
 cli = MyLightningCLI(
     ClassificationModel,
     DataModule,
