@@ -50,7 +50,6 @@ class ClassificationModel(pl.LightningModule):
         scheduler: str = "cosine",
         warmup_steps: int = 0,
         n_classes: int = 10,
-        channels_last: bool = False,
         mixup_alpha: float = 0.0,
         cutmix_alpha: float = 0.0,
         mix_prob: float = 1.0,
@@ -76,7 +75,6 @@ class ClassificationModel(pl.LightningModule):
             scheduler: Name of learning rate scheduler. One of [cosine, none]
             warmup_steps: Number of warmup epochs
             n_classes: Number of target class.
-            channels_last: Change to channels last memory format for possible training speed up
             mixup_alpha: Mixup alpha value
             cutmix_alpha: Cutmix alpha value
             mix_prob: Probability of applying mixup or cutmix (applies when mixup_alpha and/or
@@ -102,7 +100,6 @@ class ClassificationModel(pl.LightningModule):
         self.scheduler = scheduler
         self.warmup_steps = warmup_steps
         self.n_classes = n_classes
-        self.channels_last = channels_last
         self.mixup_alpha = mixup_alpha
         self.cutmix_alpha = cutmix_alpha
         self.mix_prob = mix_prob
@@ -210,18 +207,9 @@ class ClassificationModel(pl.LightningModule):
             num_classes=self.n_classes,
         )
 
-        # Change to channel last memory format
-        # https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html
-        if self.channels_last:
-            print("Using channel last memory format")
-            self = self.to(memory_format=torch.channels_last)
-
         self.test_metric_outputs = []
 
     def forward(self, x):
-        if self.channels_last:
-            x = x.to(memory_format=torch.channels_last)
-
         return self.net(pixel_values=x).logits
 
     def shared_step(self, batch, mode="train"):
