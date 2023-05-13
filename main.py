@@ -33,11 +33,6 @@ class MyLightningCLI(LightningCLI):
         parser.link_arguments(
             "data.num_classes", "model.n_classes", apply_on="instantiate"
         )
-        parser.add_argument(
-            "--test_at_end",
-            action="store_true",
-            help="Evaluate on test set after training",
-        )
 
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -48,12 +43,4 @@ cli = MyLightningCLI(
     DataModule,
     save_config_kwargs={"overwrite": True},
     trainer_defaults={"check_val_every_n_epoch": None},
-    run=False,
 )
-
-# Train
-cli.trainer.fit(cli.model, cli.datamodule)
-
-# Test
-if cli.config.test_at_end:
-    cli.trainer.test(cli.model, cli.datamodule)
