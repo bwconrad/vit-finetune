@@ -1,4 +1,5 @@
 from pytorch_lightning.callbacks import ModelCheckpoint
+import torch
 from pytorch_lightning.cli import LightningCLI
 from pytorch_lightning.loggers import CSVLogger
 
@@ -22,10 +23,10 @@ class MyLightningCLI(LightningCLI):
         parser.add_lightning_class_args(ModelCheckpoint, "model_checkpoint")
         parser.set_defaults(
             {
-                "model_checkpoint.monitor": "val_loss",
+                "model_checkpoint.monitor": "val_acc",
                 "model_checkpoint.mode": "max",
+                "model_checkpoint.filename": "best-step-{step}-{val_acc:.4f}",
                 "model_checkpoint.save_last": True,
-                "model_checkpoint.filename": "best-{epoch}-{val_acc:.4f}",
             }
         )
         parser.link_arguments("data.size", "model.image_size")
