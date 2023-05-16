@@ -66,15 +66,15 @@ class ClassificationModel(pl.LightningModule):
         """Classification Model
 
         Args:
-            model_name: Name of model checkpoint
+            model_name: Name of model checkpoint. List found in src/model.py
             optimizer: Name of optimizer. One of [adam, adamw, sgd]
             lr: Learning rate
             betas: Adam betas parameters
             momentum: SGD momentum parameter
             weight_decay: Optimizer weight decay
             scheduler: Name of learning rate scheduler. One of [cosine, none]
-            warmup_steps: Number of warmup epochs
-            n_classes: Number of target class.
+            warmup_steps: Number of warmup steps
+            n_classes: Number of target class
             mixup_alpha: Mixup alpha value
             cutmix_alpha: Cutmix alpha value
             mix_prob: Probability of applying mixup or cutmix (applies when mixup_alpha and/or
@@ -85,8 +85,8 @@ class ClassificationModel(pl.LightningModule):
             training_mode: Fine-tuning mode. One of ["full", "linear", "lora"]
             lora_r: Dimension of LoRA update matrices
             lora_alpha: LoRA scaling factor
-            lora_target_modules: Names of the modules to apply Lora to
-            lora_dropout: Dropout probability for Lora layers
+            lora_target_modules: Names of the modules to apply LoRA to
+            lora_dropout: Dropout probability for LoRA layers
             lora_bias: Whether to train biases during LoRA. One of ['none', 'all' or 'lora_only']
         """
         super().__init__()
