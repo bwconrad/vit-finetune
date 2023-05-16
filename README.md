@@ -27,31 +27,46 @@ Code for fine-tuning ViT models on various classification datasets.
 ### Training
 - To fine-tune a ViT-B/16 model on CIFAR-100 run:
 ```
-python train.py --accelerator gpu --devices 1 --precision 16 --max_steps 5000 --model.lr 0.01
---model.warmup_steps 500 --val_check_interval 250 --data.batch_size 128 --data.dataset cifar100
+python main.py fit --trainer.accelerator gpu --trainer.devices 1 --trainer.precision 16-mixed
+--trainer.max_steps 5000 --model.warmup_steps 500 --model.lr 0.01
+--trainer.val_check_interval 500 --data.batch_size 128 --data.dataset cifar100
 ```
 - [`config/`](configs/) contains example configuration files which can be run with:
 ```
-python train.py --accelerator gpu --devices 1 --precision 16 --config path/to/config
+python main.py fit --config path/to/config
 ```
 - To get a list of all arguments run `python train.py --help`
+
+#### Training on a Custom Dataset
+To train on a custom dataset first organize the images into 
+[Image Folder](https://pytorch.org/vision/stable/generated/torchvision.datasets.ImageFolder.html) 
+format. Then set `--data.dataset custom`, `--data.root path/to/custom/dataset` and `--data.num_classes <num-dataset-classes>`.
 
 ### Evaluate
 To evaluate a trained model on its test set run:
 ```
-python test.py --accelerator gpu --devices 1 --precision 16 --checkpoint path/to/checkpoint
+python main.py test --ckpt_path path/to/checkpoint --trainer.accelerator gpu 
+--trainer.devices 1 --trainer.precision 16-mixed
 ```
-- __Note__: Make sure the `--precision` argument is set to the same level as used during training.
+- __Note__: Make sure the `--trainer.precision` argument is set to the same level as used during training.
 
 
 ## Results
-All results are from fine-tuned ViT-B/16 models which were pretrained on ImageNet-21k.
+All results are from fine-tuned ViT-B/16 models which were pretrained on ImageNet-21k (`--model.model_name vit-b16-224-in21k`).
 
-| Dataset            | Total Steps | Warm Up Steps | Learning Rate | Accuracy | Config                         | 
-|:------------------:|:-----------:|:-------------:|:-------------:|:--------:|:------------------------------:|
-| CIFAR-10           | 5000        | 500           | 0.01          | 99.00    | [Link](configs/cifar10.yaml)   |
-| CIFAR-100          | 5000        | 500           | 0.01          | 92.89    | [Link](configs/cifar100.yaml)  |
-| Oxford Flowers-102 | 1000        | 100           | 0.03          | 99.02    | [Link](configs/flowers102.yaml)|
-| Oxford-IIIT Pets   | 2000        | 200           | 0.01          | 93.68    | [Link](configs/pets37.yaml)    |
-| Food-101           | 5000        | 500           | 0.03          | 90.67    | [Link](configs/food101.yaml)   |
+#### Full Fine-tuning
+
+| Dataset            | Steps | Warm Up Steps | Learning Rate   | Accuracy | Config                              | 
+|:------------------:|:--------------:|:-----------------:|:------------------:|:--------:|:-----------------------------------:|
+| CIFAR-10           | 5000           | 500               | 0.01               | 99.00    | [Link](configs/full/cifar10.yaml)   |
+| CIFAR-100          | 5000           | 500               | 0.01               | 92.89    | [Link](configs/full/cifar100.yaml)  |
+| Oxford Flowers-102 | 1000           | 100               | 0.03               | 99.02    | [Link](configs/full/flowers102.yaml)|
+| Oxford-IIIT Pets   | 2000           | 200               | 0.01               | 93.68    | [Link](configs/full/pets37.yaml)    |
+| Food-101           | 5000           | 500               | 0.03               | 90.67    | [Link](configs/full/food101.yaml)   |
+
+#### LoRA Fine-tuning
+
+| Dataset            | r  | Alpha | Steps | Warm Up Steps | Learning Rate | Accuracy | Config                              | 
+|:------------------:|:--:|:-----:|:-----:|:-------------:|:-------------:|:--------:|:-----------------------------------:|
+| CIFAR-100          | 8  | 8     | 5000  | 500           | 0.05          | 92.40    | [Link](configs/lora/cifar100.yaml)  |
 
