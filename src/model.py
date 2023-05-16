@@ -1,4 +1,6 @@
+from collections.abc import Sequence
 from typing import List, Optional, Tuple
+from peft import LoraConfig, get_peft_model
 
 import pandas as pd
 import pytorch_lightning as pl
@@ -9,8 +11,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torchmetrics import MetricCollection
 from torchmetrics.classification.accuracy import Accuracy
 from torchmetrics.classification.stat_scores import StatScores
-from transformers.models.auto.modeling_auto import \
-    AutoModelForImageClassification
+from transformers.models.auto.modeling_auto import AutoModelForImageClassification
 from transformers.optimization import get_cosine_schedule_with_warmup
 
 from src.loss import SoftTargetCrossEntropy
@@ -49,36 +50,44 @@ class ClassificationModel(pl.LightningModule):
         scheduler: str = "cosine",
         warmup_steps: int = 0,
         n_classes: int = 10,
-        channels_last: bool = False,
         mixup_alpha: float = 0.0,
         cutmix_alpha: float = 0.0,
         mix_prob: float = 1.0,
         label_smoothing: float = 0.0,
-        linear_probe: bool = False,
         image_size: int = 224,
         weights: Optional[str] = None,
+        training_mode: str = "full",
+        lora_r: int = 16,
+        lora_alpha: int = 16,
+        lora_target_modules: List[str] = ["query", "value"],
+        lora_dropout: float = 0.0,
+        lora_bias: str = "none",
     ):
         """Classification Model
 
         Args:
-            model_name: Name of model checkpoint
+            model_name: Name of model checkpoint. List found in src/model.py
             optimizer: Name of optimizer. One of [adam, adamw, sgd]
             lr: Learning rate
             betas: Adam betas parameters
             momentum: SGD momentum parameter
             weight_decay: Optimizer weight decay
             scheduler: Name of learning rate scheduler. One of [cosine, none]
-            warmup_steps: Number of warmup epochs
-            n_classes: Number of target class.
-            channels_last: Change to channels last memory format for possible training speed up
+            warmup_steps: Number of warmup steps
+            n_classes: Number of target class
             mixup_alpha: Mixup alpha value
             cutmix_alpha: Cutmix alpha value
             mix_prob: Probability of applying mixup or cutmix (applies when mixup_alpha and/or
                 cutmix_alpha are >0)
             label_smoothing: Amount of label smoothing
-            linear_probe: Only train the classifier and keep other layers frozen
             image_size: Size of input images
             weights: Path of checkpoint to load weights from (e.g when resuming after linear probing)
+            training_mode: Fine-tuning mode. One of ["full", "linear", "lora"]
+            lora_r: Dimension of LoRA update matrices
+            lora_alpha: LoRA scaling factor
+            lora_target_modules: Names of the modules to apply LoRA to
+            lora_dropout: Dropout probability for LoRA layers
+            lora_bias: Whether to train biases during LoRA. One of ['none', 'all' or 'lora_only']
         """
         super().__init__()
         self.save_hyperparameters()
@@ -91,21 +100,25 @@ class ClassificationModel(pl.LightningModule):
         self.scheduler = scheduler
         self.warmup_steps = warmup_steps
         self.n_classes = n_classes
-        self.channels_last = channels_last
         self.mixup_alpha = mixup_alpha
         self.cutmix_alpha = cutmix_alpha
         self.mix_prob = mix_prob
         self.label_smoothing = label_smoothing
-        self.linear_probe = linear_probe
         self.image_size = image_size
         self.weights = weights
+        self.training_mode = training_mode
+        self.lora_r = lora_r
+        self.lora_alpha = lora_alpha
+        self.lora_target_modules = lora_target_modules
+        self.lora_dropout = lora_dropout
+        self.lora_bias = lora_bias
 
         # Initialize network
         try:
             model_path = MODEL_DICT[self.model_name]
         except:
             raise ValueError(
-                f"{model_name} is not an available dataset. Should be one of {[k for k in MODEL_DICT.keys()]}"
+                f"{model_name} is not an available model. Should be one of {[k for k in MODEL_DICT.keys()]}"
             )
 
         self.net = AutoModelForImageClassification.from_pretrained(
@@ -129,11 +142,29 @@ class ClassificationModel(pl.LightningModule):
 
             self.net.load_state_dict(new_state_dict, strict=True)
 
-        # Freeze transformer layers if linear probing
-        if self.linear_probe:
+        # Prepare model depending on fine-tuning mode
+        if self.training_mode == "linear":
+            # Freeze transformer layers and keep classifier unfrozen
             for name, param in self.net.named_parameters():
                 if "classifier" not in name:
                     param.requires_grad = False
+        elif self.training_mode == "lora":
+            # Wrap in LoRA model
+            config = LoraConfig(
+                r=self.lora_r,
+                lora_alpha=self.lora_alpha,
+                target_modules=self.lora_target_modules,
+                lora_dropout=self.lora_dropout,
+                bias=self.lora_bias,
+                modules_to_save=["classifier"],
+            )
+            self.net = get_peft_model(self.net, config)
+        elif self.training_mode == "full":
+            pass  # Keep all layers unfrozen
+        else:
+            raise ValueError(
+                f"{self.training_mode} is not an available fine-tuning mode. Should be one of ['full', 'linear', 'lora']"
+            )
 
         # Define metrics
         self.train_metrics = MetricCollection(
@@ -176,16 +207,9 @@ class ClassificationModel(pl.LightningModule):
             num_classes=self.n_classes,
         )
 
-        # Change to channel last memory format
-        # https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html
-        if self.channels_last:
-            print("Using channel last memory format")
-            self = self.to(memory_format=torch.channels_last)
+        self.test_metric_outputs = []
 
     def forward(self, x):
-        if self.channels_last:
-            x = x.to(memory_format=torch.channels_last)
-
         return self.net(pixel_values=x).logits
 
     def shared_step(self, batch, mode="train"):
@@ -211,7 +235,8 @@ class ClassificationModel(pl.LightningModule):
                 self.log(f"{mode}_{k.lower()}", v, on_epoch=True)
 
         if mode == "test":
-            return metrics["stats"]
+            self.test_metric_outputs.append(metrics["stats"])
+
         return loss
 
     def training_step(self, batch, _):
@@ -224,10 +249,12 @@ class ClassificationModel(pl.LightningModule):
     def test_step(self, batch, _):
         return self.shared_step(batch, "test")
 
-    def test_epoch_end(self, outputs: List[torch.Tensor]):
+    def on_test_epoch_end(self):
         """Save per-class accuracies to csv"""
         # Aggregate all batch stats
-        combined_stats = torch.sum(torch.stack(outputs, dim=-1), dim=-1)
+        combined_stats = torch.sum(
+            torch.stack(self.test_metric_outputs, dim=-1), dim=-1
+        )
 
         # Calculate accuracy per class
         per_class_acc = []
