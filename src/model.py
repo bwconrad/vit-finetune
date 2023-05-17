@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from typing import List, Optional, Tuple
 from peft import LoraConfig, get_peft_model
 

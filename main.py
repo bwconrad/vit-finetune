@@ -13,16 +13,12 @@ dm_class = DataModule
 
 class MyLightningCLI(LightningCLI):
     def add_arguments_to_parser(self, parser) -> None:
+        parser.add_lightning_class_args(ModelCheckpoint, "model_checkpoint")
         parser.set_defaults(
             {
                 "trainer.logger": lazy_instance(
                     CSVLogger, save_dir="output", name="default"
-                )
-            }
-        )
-        parser.add_lightning_class_args(ModelCheckpoint, "model_checkpoint")
-        parser.set_defaults(
-            {
+                ),
                 "model_checkpoint.monitor": "val_acc",
                 "model_checkpoint.mode": "max",
                 "model_checkpoint.filename": "best-step-{step}-{val_acc:.4f}",
