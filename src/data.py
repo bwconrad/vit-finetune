@@ -5,9 +5,18 @@ from typing import Optional, Sequence
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from torchvision.datasets import (CIFAR10, CIFAR100, DTD, STL10, FGVCAircraft,
-                                  Flowers102, Food101, ImageFolder,
-                                  OxfordIIITPet, StanfordCars)
+from torchvision.datasets import (
+    CIFAR10,
+    CIFAR100,
+    DTD,
+    STL10,
+    FGVCAircraft,
+    Flowers102,
+    Food101,
+    ImageFolder,
+    OxfordIIITPet,
+    StanfordCars,
+)
 
 DATASET_DICT = {
     "cifar10": [
@@ -192,6 +201,8 @@ class DataModule(pl.LightningDataModule):
                     transform=self.transforms_train
                 )
                 self.val_dataset = self.val_dataset_fn(transform=self.transforms_test)
+            elif stage == "validate":
+                self.val_dataset = self.val_dataset_fn(transform=self.transforms_test)
             elif stage == "test":
                 self.test_dataset = self.test_dataset_fn(transform=self.transforms_test)
         else:
@@ -199,6 +210,10 @@ class DataModule(pl.LightningDataModule):
                 self.train_dataset = self.train_dataset_fn(
                     self.root, transform=self.transforms_train, download=False
                 )
+                self.val_dataset = self.val_dataset_fn(
+                    self.root, transform=self.transforms_test, download=False
+                )
+            elif stage == "validate":
                 self.val_dataset = self.val_dataset_fn(
                     self.root, transform=self.transforms_test, download=False
                 )
