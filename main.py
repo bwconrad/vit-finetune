@@ -1,5 +1,8 @@
 from pytorch_lightning.callbacks import ModelCheckpoint
+import os
 import torch
+import torch.backends.cuda
+import torch.backends.cudnn
 from pytorch_lightning.cli import LightningCLI
 from pytorch_lightning.loggers import CSVLogger
 
@@ -39,4 +42,12 @@ cli = MyLightningCLI(
     DataModule,
     save_config_kwargs={"overwrite": True},
     trainer_defaults={"check_val_every_n_epoch": None},
+)
+
+
+# Copy the config into the experiment directory
+# Fix for https://github.com/Lightning-AI/lightning/issues/17168
+os.rename(
+    os.path.join(cli.trainer.logger.save_dir, "config.yaml"),  # type:ignore
+    os.path.join(cli.trainer.logger.experiment.log_dir, "config.yaml"),  # type:ignore
 )
