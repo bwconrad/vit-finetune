@@ -7,9 +7,9 @@ trainer:
     class_path: pytorch_lightning.loggers.CSVLogger
     init_args:
       save_dir: output
-      name: cifar100
-  max_steps: 5000
-  val_check_interval: 500
+      name: pets27-lora-r8-bias
+  max_steps: 3000
+  val_check_interval: 250
 model:
   model_name: vit-b16-224-in21k
   training_mode: lora
@@ -18,11 +18,12 @@ model:
   momentum: 0.9
   weight_decay: 0.0
   scheduler: cosine
-  warmup_steps: 500
-  lora_r: 8
-  lora_alpha: 8
+  warmup_steps: 300
+  lora_r: 1
+  lora_alpha: 16
+  lora_bias: all
 data:
-  dataset: cifar100
+  dataset: pets37
   root: data/
   size: 224
   batch_size: 128

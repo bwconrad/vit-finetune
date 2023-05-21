@@ -1,5 +1,5 @@
-# Finetuning Vision Transformers
-Code for fine-tuning ViT models on various classification datasets.
+# Fine-tuning Vision Transformers
+Code for fine-tuning ViT models on various classification datasets. Includes options for full model, LoRA and linear fine-tuning procedures.
 
 
 ## Available Datasets
@@ -63,15 +63,18 @@ All results are from fine-tuned ViT-B/16 models which were pretrained on ImageNe
 | Oxford-IIIT Pets   | 2000           | 200               | 0.01               | 93.68         | [Link](configs/full/pets37.yaml)    |
 | Food-101           | 5000           | 500               | 0.03               | 90.67         | [Link](configs/full/food101.yaml)   |
 
-#### LoRA Fine-tuning
+#### LoRA
 
-| Dataset            | r  | Alpha | Steps | Warm Up Steps | Learning Rate | Test Accuracy | Config                              | 
-|:------------------:|:--:|:-----:|:-----:|:-------------:|:-------------:|:-------------:|:-----------------------------------:|
-| CIFAR-100          | 8  | 8     | 5000  | 500           | 0.05          | 92.40         | [Link](configs/lora/cifar100.yaml)  |
+| Dataset            | r  | Alpha | Bias | Steps | Warm Up Steps | Learning Rate | Test Accuracy | Config                                   | 
+|:------------------:|:--:|:-----:|:----:|:-----:|:-------------:|:-------------:|:-------------:|:----------------------------------------:|
+| CIFAR-100          | 8  | 8     | None | 5000  | 500           | 0.05          | 92.40         | [Link](configs/lora/cifar100-r8.yaml)    |
+| Oxford-IIIT Pets   | 1  | 16    | None | 3000  | 100           | 0.05          | 93.30         | [Link](configs/lora/pets37-r1.yaml)      |
+| Oxford-IIIT Pets   | 8  | 8     | None | 3000  | 100           | 0.05          | 93.79         | [Link](configs/lora/pets37-r8.yaml)      |
+| Oxford-IIIT Pets   | 8  | 8     | All  | 3000  | 300           | 0.05          | 93.76         | [Link](configs/lora/pets37-r8-bias.yaml) |
 
-#### Linear Fine-tuning
+#### Linear Probe
 
 | Dataset            | Steps          | Warm Up Steps     | Learning Rate      | Test Accuracy | Config                                | 
-|:------------------:|:--------------:|:-----------------:|:------------------:|:--------:|:-------------------------------------:|
-| Oxford Flowers-102 | 2000           | 100               | 1.0                | 99.02    | [Link](configs/linear/flowers102.yaml)|
-| Oxford-IIIT Pets   | 2000           | 100               | 0.5                | 92.64    | [Link](configs/linear/pets37.yaml)    |
+|:------------------:|:--------------:|:-----------------:|:------------------:|:-------------:|:-------------------------------------:|
+| Oxford Flowers-102 | 2000           | 100               | 1.0                | 99.02         | [Link](configs/linear/flowers102.yaml)|
+| Oxford-IIIT Pets   | 2000           | 100               | 0.5                | 92.64         | [Link](configs/linear/pets37.yaml)    |

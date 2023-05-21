@@ -1,0 +1,34 @@
+# pytorch_lightning==2.0.2
+trainer:
+  accelerator: gpu
+  devices: 1
+  precision: 16-mixed
+  logger:
+    class_path: pytorch_lightning.loggers.CSVLogger
+    init_args:
+      save_dir: output
+      name: pets27-lora-r1
+  max_steps: 3000
+  val_check_interval: 250
+model:
+  model_name: vit-b16-224-in21k
+  training_mode: lora
+  optimizer: sgd
+  lr: 0.05
+  momentum: 0.9
+  weight_decay: 0.0
+  scheduler: cosine
+  warmup_steps: 100
+  lora_r: 1
+  lora_alpha: 16
+data:
+  dataset: pets37
+  root: data/
+  size: 224
+  batch_size: 128
+  workers: 4
+model_checkpoint:
+  filename: best-step-{step}-{val_acc:.4f}
+  monitor: val_acc
+  mode: max
+  save_last: true
