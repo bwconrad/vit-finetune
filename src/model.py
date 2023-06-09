@@ -170,7 +170,9 @@ class ClassificationModel(pl.LightningModule):
             {
                 "acc": Accuracy(num_classes=self.n_classes, task="multiclass", top_k=1),
                 "acc_top5": Accuracy(
-                    num_classes=self.n_classes, task="multiclass", top_k=5
+                    num_classes=self.n_classes,
+                    task="multiclass",
+                    top_k=min(5, self.n_classes),
                 ),
             }
         )
@@ -178,7 +180,9 @@ class ClassificationModel(pl.LightningModule):
             {
                 "acc": Accuracy(num_classes=self.n_classes, task="multiclass", top_k=1),
                 "acc_top5": Accuracy(
-                    num_classes=self.n_classes, task="multiclass", top_k=5
+                    num_classes=self.n_classes,
+                    task="multiclass",
+                    top_k=min(5, self.n_classes),
                 ),
             }
         )
@@ -186,7 +190,9 @@ class ClassificationModel(pl.LightningModule):
             {
                 "acc": Accuracy(num_classes=self.n_classes, task="multiclass", top_k=1),
                 "acc_top5": Accuracy(
-                    num_classes=self.n_classes, task="multiclass", top_k=5
+                    num_classes=self.n_classes,
+                    task="multiclass",
+                    top_k=min(5, self.n_classes),
                 ),
                 "stats": StatScores(
                     task="multiclass", average=None, num_classes=self.n_classes
