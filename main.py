@@ -1,17 +1,15 @@
-from pytorch_lightning.callbacks import ModelCheckpoint
 import os
+
 import torch
 import torch.backends.cuda
 import torch.backends.cudnn
+from jsonargparse import lazy_instance
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.cli import LightningCLI
 from pytorch_lightning.loggers import CSVLogger
 
-from jsonargparse import lazy_instance
 from src.data import DataModule
 from src.model import ClassificationModel
-
-model_class = ClassificationModel
-dm_class = DataModule
 
 
 class MyLightningCLI(LightningCLI):
@@ -44,10 +42,15 @@ cli = MyLightningCLI(
     trainer_defaults={"check_val_every_n_epoch": None},
 )
 
-
 # Copy the config into the experiment directory
 # Fix for https://github.com/Lightning-AI/lightning/issues/17168
-os.rename(
-    os.path.join(cli.trainer.logger.save_dir, "config.yaml"),  # type:ignore
-    os.path.join(cli.trainer.logger.experiment.log_dir, "config.yaml"),  # type:ignore
-)
+try:
+    os.rename(
+        os.path.join(cli.trainer.logger.save_dir, "config.yaml"),  # type:ignore
+        os.path.join(
+            cli.trainer.checkpoint_callback.dirpath[:-12], "config.yaml"  # type:ignore
+        ),
+        # os.path.join(cli.trainer.logger.experiment.log_dir, "config.yaml"),  # type:ignore
+    )
+except:
+    pass
