@@ -1,16 +1,16 @@
 from typing import List, Optional, Tuple
-from peft import LoraConfig, get_peft_model
 
 import pandas as pd
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
+from peft import LoraConfig, get_peft_model
 from torch.optim import SGD, Adam, AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torchmetrics import MetricCollection
 from torchmetrics.classification.accuracy import Accuracy
 from torchmetrics.classification.stat_scores import StatScores
-from transformers.models.auto.modeling_auto import AutoModelForImageClassification
+from transformers import AutoConfig, AutoModelForImageClassification
 from transformers.optimization import get_cosine_schedule_with_warmup
 
 from src.loss import SoftTargetCrossEntropy
@@ -61,6 +61,7 @@ class ClassificationModel(pl.LightningModule):
         lora_target_modules: List[str] = ["query", "value"],
         lora_dropout: float = 0.0,
         lora_bias: str = "none",
+        from_scratch: bool = False,
     ):
         """Classification Model
 
@@ -87,6 +88,7 @@ class ClassificationModel(pl.LightningModule):
             lora_target_modules: Names of the modules to apply LoRA to
             lora_dropout: Dropout probability for LoRA layers
             lora_bias: Whether to train biases during LoRA. One of ['none', 'all' or 'lora_only']
+            from_scratch: Initialize network with random weights instead of a pretrained checkpoint
         """
         super().__init__()
         self.save_hyperparameters()
@@ -111,6 +113,7 @@ class ClassificationModel(pl.LightningModule):
         self.lora_target_modules = lora_target_modules
         self.lora_dropout = lora_dropout
         self.lora_bias = lora_bias
+        self.from_scratch = from_scratch
 
         # Initialize network
         try:
@@ -120,12 +123,20 @@ class ClassificationModel(pl.LightningModule):
                 f"{model_name} is not an available model. Should be one of {[k for k in MODEL_DICT.keys()]}"
             )
 
-        self.net = AutoModelForImageClassification.from_pretrained(
-            model_path,
-            num_labels=self.n_classes,
-            ignore_mismatched_sizes=True,
-            image_size=self.image_size,
-        )
+        if self.from_scratch:
+            # Initialize with random weights
+            config = AutoConfig.from_pretrained(model_path)
+            config.image_size = self.image_size
+            self.net = AutoModelForImageClassification.from_config(config)
+            self.net.classifier = torch.nn.Linear(config.hidden_size, self.n_classes)
+        else:
+            # Initialize with pretrained weights
+            self.net = AutoModelForImageClassification.from_pretrained(
+                model_path,
+                num_labels=self.n_classes,
+                ignore_mismatched_sizes=True,
+                image_size=self.image_size,
+            )
 
         # Load checkpoint weights
         if self.weights:

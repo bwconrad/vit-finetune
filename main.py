@@ -50,7 +50,6 @@ try:
         os.path.join(
             cli.trainer.checkpoint_callback.dirpath[:-12], "config.yaml"  # type:ignore
         ),
-        # os.path.join(cli.trainer.logger.experiment.log_dir, "config.yaml"),  # type:ignore
     )
 except:
     pass
