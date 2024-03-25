@@ -143,7 +143,7 @@ class DataModule(pl.LightningDataModule):
                 ImageFolder, root=os.path.join(self.root, "train")
             )
             self.val_dataset_fn = partial(
-                ImageFolder, root=os.path.join(self.root, "val")
+                ImageFolder, root=os.path.join(self.root, "valid")
             )
             self.test_dataset_fn = partial(
                 ImageFolder, root=os.path.join(self.root, "test")
