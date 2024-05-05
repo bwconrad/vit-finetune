@@ -6,6 +6,6 @@ pytorch_lightning[extra]==2.0.2
 torch==2.0.1
 torchmetrics==0.11.4
 torchvision==0.15.2
-transformers==4.36.0
+transformers==4.38.0
 wandb==0.15.2
 scipy==1.10.0
