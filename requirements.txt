@@ -3,7 +3,7 @@ numpy==1.24.3
 pandas==2.0.1
 peft==0.3.0
 pytorch_lightning[extra]==2.0.2
-torch==2.0.1
+torch==2.2.0
 torchmetrics==0.11.4
 torchvision==0.15.2
 transformers==4.38.0
